@@ -8,7 +8,16 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@fiscal/crypto": ["packages/crypto/src/index.ts"],
+      "@fiscal/nfe-adapter": ["packages/nfe-adapter/src/index.ts"],
+      "@fiscal/nfse-adapter": ["packages/nfse-adapter/src/index.ts"],
+      "@fiscal/tax-engine": ["packages/tax-engine/src/index.ts"],
+      "@fiscal/fiscal-core": ["packages/fiscal-core/src/index.ts"],
+      "@fiscal/database": ["packages/database/src/index.ts"]
+    }
   },
   "references": [
     { "path": "./packages/fiscal-core" },

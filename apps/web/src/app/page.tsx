@@ -26,20 +26,29 @@ export default async function DashboardPage() {
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold text-brand-400 uppercase tracking-wider">IT2A Fiscal SaaS</span>
+            <span className="text-slate-600">•</span>
+            <span className="text-xs text-slate-400">Hub Tributário & Mensageria SEFAZ</span>
+          </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Painel Operacional Fiscal</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Monitoramento de emissões, integrações de APIs e comunicação com a SEFAZ e Prefeituras.
+            Gestão de emissões autorizadas, contingência, validação tributária e comunicação com a SEFAZ e Prefeituras.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            Ambiente: Homologação
-          </span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/issue"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-500 transition-colors shadow-sm"
+          >
+            <Zap className="w-4 h-4 text-amber-300" />
+            Nova Emissão
+          </Link>
           <Link
             href="/documents"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-slate-800/90 text-slate-200 hover:text-white hover:bg-slate-700 transition-colors border border-slate-700 shadow-sm"
           >
-            Ver Todas as Notas
+            Ver Todas
             <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -47,7 +56,7 @@ export default async function DashboardPage() {
 
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="bg-slate-900 border border-slate-800/90 rounded-xl p-5 shadow-sm hover:border-brand-500/30 transition-colors">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-medium uppercase tracking-wider">Notas Autorizadas</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />

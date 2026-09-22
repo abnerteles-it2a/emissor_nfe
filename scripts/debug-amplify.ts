@@ -73,7 +73,7 @@ async function checkAmplify() {
   console.log('\n--- 4. Domínio Customizado ---');
   const da = await amplify.send(new ListDomainAssociationsCommand({ appId }));
   for (const d of da.domainAssociations || []) {
-    console.log(`Domínio: ${d.domainName} | Status: ${d.domainStatus} | Subdomínios:`, d.subDomains?.map((s) => `${s.subDomainSetting?.prefix}.${d.domainName} (${s.dnsRecord})`));
+    console.log(JSON.stringify(d, null, 2));
   }
 }
 
