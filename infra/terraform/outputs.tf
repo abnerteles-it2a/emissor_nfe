@@ -32,3 +32,18 @@ output "alb_dns_name" {
   description = "DNS do Application Load Balancer da API (Destino CNAME para api.nfe.it2a.com na IONOS)"
   value       = aws_lb.api.dns_name
 }
+
+# ==========================================
+# REGISTROS CNAME PARA VALIDAÇÃO SSL NA IONOS
+# ==========================================
+output "acm_validation_records" {
+  description = "Registros CNAME para adicionar na IONOS para emitir o certificado SSL da AWS"
+  value = [
+    for dvo in aws_acm_certificate.api_cert.domain_validation_options : {
+      domain_name  = dvo.domain_name
+      record_name  = dvo.resource_record_name
+      record_type  = dvo.resource_record_type
+      record_value = dvo.resource_record_value
+    }
+  ]
+}
