@@ -1,18 +1,17 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  Building2,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
-  AlertTriangle,
-  TrendingUp,
-  DollarSign,
-  Trophy,
-  Zap,
-  RefreshCw,
   FileCheck,
-  FileText
+  CheckCircle2,
+  FileText,
+  Building2,
+  Clock,
+  AlertTriangle,
+  Radar,
+  ShieldCheck,
+  Zap,
+  ArrowUpRight,
+  RefreshCw
 } from 'lucide-react';
 import { KpiCard } from '@/components/KpiCard';
 import { PredictiveInsightsWidget } from '@/components/PredictiveInsightsWidget';
@@ -25,24 +24,23 @@ export default async function DashboardPage() {
 
   const authorizedDocs = documents.filter((d) => d.status === 'AUTHORIZED');
   const totalValue = authorizedDocs.reduce((acc, doc) => acc + doc.totalValue, 0);
-  const nfeValue = authorizedDocs
-    .filter((d) => d.documentType === 'NFE')
-    .reduce((acc, d) => acc + d.totalValue, 0);
-  const nfseValue = authorizedDocs
-    .filter((d) => d.documentType === 'NFSE')
-    .reduce((acc, d) => acc + d.totalValue, 0);
+  const nfeDocs = authorizedDocs.filter((d) => d.documentType === 'NFE');
+  const nfseDocs = authorizedDocs.filter((d) => d.documentType === 'NFSE');
+  const nfeValue = nfeDocs.reduce((acc, d) => acc + d.totalValue, 0);
+  const nfseValue = nfseDocs.reduce((acc, d) => acc + d.totalValue, 0);
   const processingCount = documents.filter((d) => d.status === 'PROCESSING' || d.status === 'RECEIVED').length;
+  const rejectedCount = documents.filter((d) => d.status === 'REJECTED' || d.status === 'FAILED').length;
 
   return (
     <div className="space-y-6 animate-fadeIn pb-8">
-      {/* 1. Header do Dashboard Executivo */}
+      {/* 1. Header Executivo do Emissor Fiscal */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="flex flex-col gap-0.5">
           <h1 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
             DASHBOARD EXECUTIVO
           </h1>
           <h2 className="text-2xl font-black text-white tracking-tight">
-            Visão Geral
+            Painel Operacional Fiscal
           </h2>
         </div>
 
@@ -58,108 +56,108 @@ export default async function DashboardPage() {
             href="/documents"
             className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors flex items-center gap-1"
           >
-            Ver Todas
+            Ver Documentos
             <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>
 
-      {/* 2. Banner de Diagnóstico Preditivo (Portado do Gestor Financeiro) */}
+      {/* 2. Banner de Diagnóstico Preditivo Fiscal */}
       <PredictiveInsightsWidget />
 
-      {/* 3. Seção: Visão Geral de Patrimônio / Faturamento */}
+      {/* 3. Seção: Métricas Fiscais (Visual 100% Gestor Financeiro, Dados 100% Fiscais) */}
       <section aria-labelledby="overview-title" className="space-y-3">
         <div className="flex items-center justify-between">
           <h2
             id="overview-title"
             className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
           >
-            VISÃO GERAL DE PATRIMÔNIO &amp; FATURAMENTO
+            VISÃO GERAL OPERACIONAL &amp; EMISSÕES
           </h2>
         </div>
 
-        {/* Grade de 8 KpiCards 100% idêntica ao Gestor Financeiro */}
+        {/* Grade de 8 KpiCards (Card 1 em Teal Sólido #0D9488 e Cards 2 a 8 com borda esquerda de 5px) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-4">
-          {/* Card 1: Primário Sólido Teal #0D9488 */}
+          {/* Card 1: Destaque Primário em Teal Sólido */}
           <KpiCard
-            title="PATRIMÔNIO LÍQUIDO / FATURADO"
+            title="VOLUME TOTAL EMITIDO"
             value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue)}
-            icon={<Building2 className="w-5 h-5" />}
-            subtext="ATIVOS + DISPONÍVEL"
+            icon={<FileCheck className="w-5 h-5" />}
+            subtext="VALOR FISCAL AUTORIZADO"
             variant="primary"
           />
 
-          {/* Card 2: Saldo em Contas (Borda Azul) */}
+          {/* Card 2: Notas Autorizadas (Borda Azul) */}
           <KpiCard
-            title="SALDO EM CONTAS / NOTAS"
+            title="NOTAS AUTORIZADAS"
             value={authorizedDocs.length.toString()}
-            icon={<Wallet className="w-5 h-5" />}
+            icon={<CheckCircle2 className="w-5 h-5" />}
             subtext="100% INTEGRADAS SEFAZ"
             color="blue"
             density="compact"
           />
 
-          {/* Card 3: Receitas do Mês (Borda Verde) */}
+          {/* Card 3: NF-e Mercadorias (Borda Verde) */}
           <KpiCard
-            title="RECEITAS DO MÊS (NF-E)"
+            title="NF-E MERCADORIAS (55)"
             value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(nfeValue)}
-            icon={<ArrowUpRight className="w-5 h-5" />}
-            subtext="↑ 0.0% VS ANTERIOR"
+            icon={<FileText className="w-5 h-5" />}
+            subtext={`${nfeDocs.length} NOTAS AUTORIZADAS`}
             subtextColor="text-emerald-500"
             color="green"
             density="compact"
           />
 
-          {/* Card 4: Despesas do Mês (Borda Rosa) */}
+          {/* Card 4: NFS-e Serviços Paulistana (Borda Ciano) */}
           <KpiCard
-            title="SERVIÇOS DO MÊS (NFS-E)"
+            title="NFS-E SERVIÇOS (SP)"
             value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(nfseValue)}
-            icon={<ArrowDownRight className="w-5 h-5" />}
-            subtext="↑ 0.0% VS ANTERIOR"
+            icon={<Building2 className="w-5 h-5" />}
+            subtext={`${nfseDocs.length} NOTAS PAULISTANAS`}
             subtextColor="text-emerald-500"
-            color="rose"
+            color="#00B4D8"
             density="compact"
           />
 
-          {/* Card 5: Contas a Pagar / Em Fila (Borda Âmbar) */}
+          {/* Card 5: Em Processamento (Borda Âmbar) */}
           <KpiCard
-            title="CONTAS A PAGAR / EM FILA"
+            title="EM PROCESSAMENTO"
             value={processingCount.toString()}
-            icon={<AlertTriangle className="w-5 h-5" />}
+            icon={<Clock className="w-5 h-5" />}
             subtext="FILA ASSÍNCRONA ECS"
             subtextColor="text-orange-500"
             color="amber"
             density="compact"
           />
 
-          {/* Card 6: Contas a Receber / Radar (Borda Azul) */}
+          {/* Card 6: Rejeições / Erros (Borda Rosa) */}
           <KpiCard
-            title="CONTAS A RECEBER / RADAR"
-            value="R$ 0,00"
-            icon={<TrendingUp className="w-5 h-5" />}
-            subtext="PREVISTO ESTE MÊS"
-            subtextColor="text-emerald-500"
-            color="blue"
+            title="REJEIÇÕES / ERROS"
+            value={rejectedCount.toString()}
+            icon={<AlertTriangle className="w-5 h-5" />}
+            subtext={rejectedCount === 0 ? "0 REJEIÇÕES REGISTRADAS" : "REQUER ATENÇÃO"}
+            subtextColor={rejectedCount === 0 ? "text-emerald-500" : "text-rose-500"}
+            color="rose"
             density="compact"
           />
 
-          {/* Card 7: Projeção Mensal (Borda Índigo) */}
+          {/* Card 7: Radar DF-e Entradas (Borda Índigo) */}
           <KpiCard
-            title="PROJEÇÃO MENSAL"
-            value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue * 1.15)}
-            icon={<DollarSign className="w-5 h-5" />}
-            subtext="SALDO FINAL PROJETADO"
+            title="RADAR DF-E (ENTRADAS)"
+            value="3"
+            icon={<Radar className="w-5 h-5" />}
+            subtext="NOTAS DE FORNECEDORES"
             subtextColor="text-emerald-500"
             color="indigo"
             density="compact"
           />
 
-          {/* Card 8: Taxa de Poupança / Sucesso (Borda Verde) */}
+          {/* Card 8: Taxa de Autorização SEFAZ (Borda Verde) */}
           <KpiCard
-            title="TAXA DE POUPANÇA / SUCESSO"
+            title="TAXA DE AUTORIZAÇÃO"
             value="100.0%"
-            icon={<Trophy className="w-5 h-5" />}
-            subtext="↑ 0.0% VS ANTERIOR"
+            icon={<ShieldCheck className="w-5 h-5" />}
+            subtext="OPERAÇÃO NORMAL SEFAZ"
             subtextColor="text-emerald-500"
             color="green"
             density="compact"
@@ -167,26 +165,26 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* 4. Seção: Projeção e Inteligência Fiscal */}
+      {/* 4. Seção: Últimas Emissões Processadas */}
       <section aria-labelledby="flow-title" className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <h2
             id="flow-title"
             className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
           >
-            PROJEÇÃO E INTELIGÊNCIA FISCAL
+            ÚLTIMAS EMISSÕES TRANSMITIDAS
           </h2>
         </div>
 
-        {/* Tabela de Transmissões no Padrão Omie */}
+        {/* Tabela de Transmissões no Padrão Omie de Alto Contraste */}
         <div className="omie-table-container">
           <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
             <div>
               <h3 className="text-sm font-bold text-white">
-                Últimas Emissões Processadas
+                Fila de Transmissões Recentes
               </h3>
               <p className="text-xs text-slate-400">
-                Documentos transmitidos via mTLS SEFAZ SP e Prefeitura Paulistana
+                Lotes transmitidos via mTLS SEFAZ SP e Prefeitura Paulistana com Certificado A1
               </p>
             </div>
             <span className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -204,7 +202,7 @@ export default async function DashboardPage() {
                   <th>Valor Total</th>
                   <th>Status SEFAZ</th>
                   <th>Chave de Acesso / Protocolo</th>
-                  <th className="text-right">Data</th>
+                  <th className="text-right">Data Emissão</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,7 +216,7 @@ export default async function DashboardPage() {
                           }`}
                         />
                         <span className="font-bold text-white">
-                          {doc.documentType} #{doc.number || 1}
+                          {doc.documentType === 'NFE' ? 'NF-e 55' : 'NFS-e SP'} #{doc.number || 1}
                         </span>
                       </div>
                     </td>

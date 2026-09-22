@@ -10,11 +10,10 @@ import {
   Archive,
   Settings,
   HelpCircle,
-  Menu,
+  Radio,
   ShieldCheck
 } from 'lucide-react';
 import { Header } from '@/components/Header';
-import { CalendarWidget } from '@/components/CalendarWidget';
 
 export const metadata: Metadata = {
   title: 'IT2A Fiscal — Emissor SaaS e Inteligência Tributária',
@@ -30,7 +29,7 @@ export default function RootLayout({
     <html lang="pt-BR" className="dark">
       <body className="bg-spatial text-slate-100 min-h-screen overflow-hidden antialiased font-sans">
         <div className="flex h-screen overflow-hidden">
-          {/* SIDEBAR (Idêntica ao Gestor Financeiro) */}
+          {/* SIDEBAR COM O VISUAL GESTOR FINANCEIRO (ESTRUTURA 100% FISCAL) */}
           <aside className="w-64 glass-sidebar flex flex-col justify-between shrink-0 h-screen sticky top-0 z-40 text-slate-300 shadow-2xl">
             {/* Top Brand Section */}
             <div>
@@ -47,7 +46,7 @@ export default function RootLayout({
                 </div>
                 <div className="flex flex-col overflow-hidden">
                   <span className="block font-black text-white text-[13px] leading-tight truncate tracking-tight uppercase">
-                    GESTOR FISCAL
+                    EMISSOR FISCAL
                   </span>
                   <span className="block text-[8.5px] text-slate-400 font-extrabold truncate uppercase tracking-[0.14em]">
                     ENTERPRISE ECOSYSTEM
@@ -70,7 +69,7 @@ export default function RootLayout({
                 </div>
               </div>
 
-              {/* Navigation Items */}
+              {/* Navigation Items (Específicos do Emissor Fiscal) */}
               <nav className="p-3 space-y-1 overflow-y-auto">
                 <Link
                   href="/"
@@ -82,17 +81,22 @@ export default function RootLayout({
 
                 <Link
                   href="/issue"
-                  className="w-full h-10 flex items-center px-3 gap-3 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                  className="w-full h-10 flex items-center justify-between px-3 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-white"
                 >
-                  <PlusCircle className="w-4.5 h-4.5 text-slate-400 group-hover:text-white" />
-                  <span>Nova Emissão</span>
+                  <div className="flex items-center gap-3">
+                    <PlusCircle className="w-4.5 h-4.5 text-brand-400" />
+                    <span>Nova Emissão</span>
+                  </div>
+                  <span className="text-[9px] bg-brand-500 text-slate-950 px-1.5 py-0.5 rounded font-black">
+                    55 / SP
+                  </span>
                 </Link>
 
                 <Link
                   href="/documents"
                   className="w-full h-10 flex items-center px-3 gap-3 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-white"
                 >
-                  <FileText className="w-4.5 h-4.5 text-slate-400 group-hover:text-white" />
+                  <FileText className="w-4.5 h-4.5 text-sky-400" />
                   <span>Documentos Fiscais</span>
                 </Link>
 
@@ -100,7 +104,7 @@ export default function RootLayout({
                   href="/radar"
                   className="w-full h-10 flex items-center px-3 gap-3 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-white"
                 >
-                  <Radar className="w-4.5 h-4.5 text-slate-400 group-hover:text-white" />
+                  <Radar className="w-4.5 h-4.5 text-amber-400" />
                   <span>Radar DF-e</span>
                 </Link>
 
@@ -108,7 +112,7 @@ export default function RootLayout({
                   href="/closing"
                   className="w-full h-10 flex items-center px-3 gap-3 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-white"
                 >
-                  <Archive className="w-4.5 h-4.5 text-slate-400 group-hover:text-white" />
+                  <Archive className="w-4.5 h-4.5 text-indigo-400" />
                   <span>Fechamento Fiscal</span>
                 </Link>
 
@@ -116,14 +120,46 @@ export default function RootLayout({
                   href="/settings"
                   className="w-full h-10 flex items-center px-3 gap-3 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-white"
                 >
-                  <Settings className="w-4.5 h-4.5 text-slate-400 group-hover:text-white" />
+                  <Settings className="w-4.5 h-4.5 text-slate-400" />
                   <span>Configurações &amp; A1</span>
                 </Link>
 
-                {/* Calendar Widget in Sidebar */}
-                <div className="pt-2">
-                  <div className="h-px bg-slate-800/80 mb-2.5 mx-1" />
-                  <CalendarWidget isSidebar={true} />
+                {/* Card de Monitoramento Fiscal na Sidebar */}
+                <div className="pt-3">
+                  <div className="h-px bg-slate-800/80 mb-3 mx-1" />
+                  <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800/80 text-xs space-y-2.5 shadow-sm">
+                    <div className="flex items-center justify-between text-slate-400">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-300 text-[11px]">
+                        <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+                        SEFAZ SP
+                      </span>
+                      <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                        Online (107)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-slate-400">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-300 text-[11px]">
+                        <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+                        Nota Paulistana
+                      </span>
+                      <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
+                        Online
+                      </span>
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-800/60 flex items-center gap-2 text-xs text-slate-400">
+                      <ShieldCheck className="w-4 h-4 text-brand-400 shrink-0" />
+                      <div className="truncate">
+                        <span className="block font-semibold text-slate-200 text-[11px] truncate">
+                          Certificado A1 IT2A
+                        </span>
+                        <span className="text-[9px] text-teal-400 font-medium">
+                          Válido até 06/03/2027
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </nav>
             </div>
