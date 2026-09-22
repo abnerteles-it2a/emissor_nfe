@@ -1,0 +1,63 @@
+# ==========================================
+# Segurança Fiscal e Segredos (NUNCA COMMITAR)
+# ==========================================
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.crt
+*.cer
+cert_it2a/
+*.pdf
+financas/
+*.xlsx
+*.xls
+
+# ==========================================
+# Node.js & Gerenciadores de Pacote
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ==========================================
+# Compilação e Build
+# ==========================================
+dist/
+build/
+.turbo/
+.next/
+out/
+test-output/
+data/queue-issue/
+data/
+
+# ==========================================
+# Terraform & Infraestrutura Local
+# ==========================================
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+
+# ==========================================
+# Logs e Backups
+# ==========================================
+*.log
+.ag-kit-backups/
+.claude/
+
+# ==========================================
+# Sistema Operacional / IDEs
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

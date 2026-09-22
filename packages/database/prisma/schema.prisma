@@ -1,0 +1,262 @@
+// This is your Prisma schema file
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Tenant ────────────────────────────────────────────────────
+model Tenant {
+  id            String          @id @default(uuid())
+  name          String
+  document      String          @unique // CNPJ or CPF
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  establishments Establishment[]
+  apiKeys        ApiKey[]
+  fiscalDocs     FiscalDocument[]
+  auditLogs      AuditLog[]
+}
+
+// ── Establishment (filial/local emissor) ──────────────────────
+model Establishment {
+  id               String    @id @default(uuid())
+  tenantId         String
+  cnpj             String
+  name             String
+  ie               String?   // Inscrição Estadual
+  im               String?   // Inscrição Municipal
+  uf               String    @db.Char(2)
+  municipalityCode String    @db.Char(7)
+  address          Json
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  certificates     Certificate[]
+  fiscalDocs       FiscalDocument[]
+  numberControls   NumberControl[]
+
+  @@index([tenantId])
+  @@index([cnpj])
+}
+
+// ── Certificate (referência ao A1 — nunca salva o .pfx direto) ─
+model Certificate {
+  id              String    @id @default(uuid())
+  establishmentId String
+  label           String
+  // Base64 do .pfx encriptado com AES — chave de decriptação fica em secret manager
+  encryptedPfx    String    @db.Text
+  pfxPasswordHash String    // bcrypt hash da senha
+  validFrom       DateTime
+  validTo         DateTime
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+
+  establishment   Establishment @relation(fields: [establishmentId], references: [id])
+  fiscalDocs      FiscalDocument[]
+
+  @@index([establishmentId])
+}
+
+// ── Number Control (série/número por estabelecimento/modelo) ──
+model NumberControl {
+  id              String    @id @default(uuid())
+  establishmentId String
+  documentType    DocumentType
+  series          Int
+  lastNumber      Int       @default(0)
+  updatedAt       DateTime  @updatedAt
+
+  establishment   Establishment @relation(fields: [establishmentId], references: [id])
+
+  @@unique([establishmentId, documentType, series])
+}
+
+// ── Fiscal Document (NF-e, NFC-e, NFS-e) ─────────────────────
+model FiscalDocument {
+  id               String          @id @default(uuid())
+  tenantId         String
+  establishmentId  String
+  certificateId    String?
+
+  // Rastreabilidade da origem
+  sourceSystem     String          // "gestor-veterinario" | "erp" | "financeiro" | "portal"
+  sourceDocumentId String
+  idempotencyKey   String
+
+  // Tipo e modelo
+  documentType     DocumentType
+  model            String          @db.Char(2) // "55" | "65"
+  environment      Environment
+
+  // Status
+  status           DocumentStatus  @default(RECEIVED)
+
+  // Numeração
+  series           Int?
+  number           Int?
+  accessKey        String?         @unique
+  protocol         String?
+
+  // Datas fiscais
+  issueDate        DateTime?
+  competenceDate   DateTime?       // NFS-e
+  authorizedAt     DateTime?
+  cancelledAt      DateTime?
+
+  // Versionamento de regras (auditabilidade)
+  schemaVersion    String?
+  rulesVersion     String?
+  rendererVersion  String?
+
+  // Hash do input para detecção de duplicatas
+  rawInputHash     String?
+
+  // Storage keys (S3/MinIO)
+  xmlStorageKey    String?
+  pdfStorageKey    String?
+
+  // Erro
+  errorCode        String?
+  errorMessage     String?
+
+  // Payload original (para reprocessamento)
+  rawPayload       Json
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  establishment    Establishment   @relation(fields: [establishmentId], references: [id])
+  certificate      Certificate?    @relation(fields: [certificateId], references: [id])
+  attempts         FiscalAttempt[]
+  events           FiscalEvent[]
+
+  @@index([tenantId])
+  @@index([establishmentId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@index([sourceSystem, sourceDocumentId])
+}
+
+// ── Fiscal Attempt (cada tentativa de transmissão) ─────────────
+model FiscalAttempt {
+  id             String    @id @default(uuid())
+  documentId     String
+  attemptNumber  Int
+  status         AttemptStatus
+  sefazCode      String?   // cStat SEFAZ
+  sefazMessage   String?   // xMotivo SEFAZ
+  rawRequest     String?   @db.Text // SOAP envelope enviado
+  rawResponse    String?   @db.Text // SOAP envelope recebido
+  durationMs     Int?
+  createdAt      DateTime  @default(now())
+
+  document       FiscalDocument @relation(fields: [documentId], references: [id])
+
+  @@index([documentId])
+}
+
+// ── Fiscal Event (cancelamento, CCe, inutilização) ────────────
+model FiscalEvent {
+  id          String      @id @default(uuid())
+  documentId  String
+  eventType   EventType
+  protocol    String?
+  justification String?   @db.Text
+  status      EventStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+
+  document    FiscalDocument @relation(fields: [documentId], references: [id])
+}
+
+// ── API Key ────────────────────────────────────────────────────
+model ApiKey {
+  id          String    @id @default(uuid())
+  tenantId    String
+  label       String
+  keyHash     String    @unique // bcrypt hash
+  prefix      String    @db.VarChar(8) // primeiros 8 chars para identificação
+  scopes      String[]  @default(["documents:write", "documents:read"])
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+// ── Audit Log ──────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  actor      String   // userId ou "system"
+  action     String   // "document.created", "certificate.added" etc.
+  resourceId String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+// ── Enums ──────────────────────────────────────────────────────
+enum DocumentType {
+  NFE
+  NFCE
+  NFSE
+}
+
+enum Environment {
+  HOMOLOGATION
+  PRODUCTION
+}
+
+enum DocumentStatus {
+  RECEIVED
+  VALIDATING
+  QUEUED
+  PROCESSING
+  AUTHORIZED
+  REJECTED
+  CANCEL_REQUESTED
+  CANCELLED
+  SUBSTITUTION_REQUESTED
+  CONTINGENCY
+  FAILED
+  DUPLICATED
+}
+
+enum AttemptStatus {
+  SUCCESS
+  REJECTED
+  ERROR
+  TIMEOUT
+}
+
+enum EventType {
+  CANCELLATION
+  CORRECTION_LETTER
+  INUTILIZATION
+  SUBSTITUTION
+}
+
+enum EventStatus {
+  PENDING
+  AUTHORIZED
+  REJECTED
+  FAILED
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@fiscal/nfse-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fiscal/crypto": "workspace:*",
+    "@fiscal/fiscal-core": "workspace:*",
+    "@fiscal/tax-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.3.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.0"
+  }
+}

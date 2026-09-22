@@ -1,0 +1,30 @@
+{
+  "name": "fiscal-platform",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "pnpm --filter api dev",
+    "dev:worker": "pnpm --filter worker dev",
+    "dev:infra": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "stop:infra": "docker compose -f infra/docker/docker-compose.yml down",
+    "db:migrate": "pnpm --filter @fiscal/database exec prisma migrate dev",
+    "db:studio": "pnpm --filter @fiscal/database exec prisma studio",
+    "db:generate": "pnpm --filter @fiscal/database exec prisma generate",
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "build": "pnpm -r --filter \"@fiscal/*\" build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "@types/node": "^22.3.0",
+    "eslint": "^9.9.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.0"
+  }
+}

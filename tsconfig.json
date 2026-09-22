@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "references": [
+    { "path": "./packages/fiscal-core" },
+    { "path": "./packages/tax-engine" },
+    { "path": "./packages/crypto" },
+    { "path": "./packages/database" },
+    { "path": "./packages/nfe-adapter" },
+    { "path": "./apps/api" },
+    { "path": "./apps/worker" }
+  ],
+  "exclude": ["node_modules"]
+}

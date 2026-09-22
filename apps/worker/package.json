@@ -1,0 +1,23 @@
+{
+  "name": "worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fiscal/crypto": "workspace:*",
+    "@fiscal/database": "workspace:*",
+    "@fiscal/fiscal-core": "workspace:*",
+    "@fiscal/nfe-adapter": "workspace:*",
+    "pino": "^9.14.0",
+    "pino-pretty": "^11.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.3.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.5.4"
+  }
+}
