@@ -34,6 +34,7 @@ build/
 .turbo/
 .next/
 out/
+*.tsbuildinfo
 test-output/
 data/queue-issue/
 data/

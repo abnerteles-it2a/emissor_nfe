@@ -16,6 +16,13 @@ resource "aws_cloudwatch_log_group" "api" {
   retention_in_days = 7
 }
 
+# CloudWatch Log Group para o Worker
+resource "aws_cloudwatch_log_group" "worker" {
+  name              = "/ecs/${var.app_name}-worker-${var.environment}"
+  retention_in_days = 7
+}
+
+
 # ==========================================
 # IAM Roles para ECS Fargate
 # ==========================================
@@ -249,3 +256,60 @@ resource "aws_ecs_service" "api" {
 
   depends_on = [aws_lb_listener.http]
 }
+
+# ==========================================
+# ECS Task Definition (Worker Fargate)
+# ==========================================
+resource "aws_ecs_task_definition" "worker" {
+  family                   = "${var.app_name}-worker-${var.environment}"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256" # 0.25 vCPU
+  memory                   = "512" # 512 MB RAM
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "worker"
+      image     = "${aws_ecr_repository.worker.repository_url}:latest"
+      essential = true
+      environment = [
+        { name = "NODE_ENV", value = "production" },
+        { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}" },
+        { name = "STORAGE_BUCKET", value = aws_s3_bucket.fiscal_documents.id },
+        { name = "STORAGE_REGION", value = var.aws_region },
+        { name = "SEFAZ_UF", value = "SP" },
+        { name = "SEFAZ_ENVIRONMENT", value = "homologacao" },
+        { name = "CERT_PFX_BASE64", value = var.cert_pfx_base64 },
+        { name = "CERT_PASSWORD", value = var.cert_password }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.worker.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "worker"
+        }
+      }
+    }
+  ])
+}
+
+# ==========================================
+# ECS Service (Worker Fargate)
+# ==========================================
+resource "aws_ecs_service" "worker" {
+  name            = "${var.app_name}-worker-${var.environment}"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.worker.arn
+  launch_type     = "FARGATE"
+  desired_count   = 1
+
+  network_configuration {
+    subnets          = data.aws_subnets.default.ids
+    security_groups  = [aws_security_group.ecs_tasks_sg.id]
+    assign_public_ip = true
+  }
+}
+

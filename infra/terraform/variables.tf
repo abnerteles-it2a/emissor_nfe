@@ -59,3 +59,18 @@ variable "github_token" {
   sensitive   = true
   default     = ""
 }
+
+variable "cert_pfx_base64" {
+  type        = string
+  description = "Certificado Digital A1 codificado em Base64"
+  sensitive   = true
+  default     = ""
+}
+
+variable "cert_password" {
+  type        = string
+  description = "Senha do Certificado Digital A1"
+  sensitive   = true
+  default     = ""
+}
+

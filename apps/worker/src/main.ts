@@ -13,6 +13,23 @@ const logger = pino({
   },
 });
 
+type IssueJobMessage = {
+  id: string;
+  tenantId: string;
+  establishmentId: string;
+  documentType: 'NFE' | 'NFCE' | 'NFSE';
+  environment: 'HOMOLOGATION' | 'PRODUCTION';
+  payload: {
+    issuer?: NFeIssuer;
+    recipient: unknown;
+    items: unknown[];
+    totalValue: number;
+  };
+  idempotencyKey: string;
+  series?: number;
+  number?: number;
+};
+
 function buildAdapter(issuer: NFeIssuer): NfeAdapter {
   const certPfxBase64 = process.env.CERT_PFX_BASE64;
   const certPassword = process.env.CERT_PASSWORD;
@@ -32,25 +49,7 @@ function buildAdapter(issuer: NFeIssuer): NfeAdapter {
   });
 }
 
-async function processMessage(filePath: string): Promise<void> {
-  const raw = await fs.readFile(filePath, 'utf8');
-  const msg = JSON.parse(raw) as {
-    id: string;
-    tenantId: string;
-    establishmentId: string;
-    documentType: 'NFE' | 'NFCE' | 'NFSE';
-    environment: 'HOMOLOGATION' | 'PRODUCTION';
-    payload: {
-      issuer?: NFeIssuer;
-      recipient: unknown;
-      items: unknown[];
-      totalValue: number;
-    };
-    idempotencyKey: string;
-    series?: number;
-    number?: number;
-  };
-
+async function processJob(msg: IssueJobMessage): Promise<void> {
   logger.info({ id: msg.id, type: msg.documentType }, 'Processing fiscal document');
 
   // Atualiza status para PROCESSING
@@ -65,7 +64,6 @@ async function processMessage(filePath: string): Promise<void> {
       where: { id: msg.id },
       data: { status: 'FAILED', errorCode: 'ISSUER_MISSING', errorMessage: 'Dados do emitente não informados no payload' },
     });
-    await fs.rm(filePath);
     return;
   }
 
@@ -127,38 +125,104 @@ async function processMessage(filePath: string): Promise<void> {
     });
     logger.warn({ id: msg.id, status: result.status, error: result.errors?.[0] }, 'Document NOT authorized');
   }
-
-  await fs.rm(filePath);
 }
 
-async function consumeIssueQueue(): Promise<void> {
-  await fs.mkdir(issueQueueDir, { recursive: true });
-  const files = await fs.readdir(issueQueueDir);
+async function consumeFilesystemQueue(): Promise<number> {
+  try {
+    await fs.mkdir(issueQueueDir, { recursive: true });
+    const files = await fs.readdir(issueQueueDir);
+    if (files.length === 0) return 0;
 
-  if (files.length === 0) {
-    logger.info('Queue empty — nothing to process');
-    return;
-  }
-
-  for (const file of files) {
-    const fullPath = path.join(issueQueueDir, file);
-    try {
-      await processMessage(fullPath);
-    } catch (err) {
-      logger.error({ file, err }, 'Failed to process message — leaving for retry');
+    for (const file of files) {
+      const fullPath = path.join(issueQueueDir, file);
+      try {
+        const raw = await fs.readFile(fullPath, 'utf8');
+        const msg = JSON.parse(raw) as IssueJobMessage;
+        await processJob(msg);
+        await fs.rm(fullPath, { force: true });
+      } catch (err) {
+        logger.error({ file, err }, 'Failed to process message from filesystem — leaving for retry');
+      }
     }
+    return files.length;
+  } catch (err) {
+    logger.error({ err }, 'Error reading filesystem queue');
+    return 0;
   }
 }
 
-async function main(): Promise<void> {
-  logger.info('Worker started');
-  await consumeIssueQueue();
-  await prisma.$disconnect();
+async function consumeDatabaseQueue(): Promise<number> {
+  try {
+    const pendingDocs = await prisma.fiscalDocument.findMany({
+      where: { status: 'RECEIVED' },
+      orderBy: { createdAt: 'asc' },
+      take: 10,
+    });
+
+    if (pendingDocs.length === 0) return 0;
+
+    for (const doc of pendingDocs) {
+      try {
+        const payload = (doc.rawPayload ?? {}) as IssueJobMessage['payload'];
+        await processJob({
+          id: doc.id,
+          tenantId: doc.tenantId,
+          establishmentId: doc.establishmentId,
+          documentType: doc.documentType as 'NFE' | 'NFCE' | 'NFSE',
+          environment: doc.environment as 'HOMOLOGATION' | 'PRODUCTION',
+          payload,
+          idempotencyKey: doc.idempotencyKey,
+          series: doc.series ?? undefined,
+          number: doc.number ?? undefined,
+        });
+      } catch (err) {
+        logger.error({ id: doc.id, err }, 'Failed to process document from database queue');
+      }
+    }
+
+    return pendingDocs.length;
+  } catch (err) {
+    logger.error({ err }, 'Error reading database queue');
+    return 0;
+  }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((err) => {
-    logger.error(err, 'Worker fatal error');
-    process.exit(1);
-  });
+let isRunning = true;
+
+async function runLoop(): Promise<void> {
+  logger.info('Fiscal Worker Daemon started and listening for jobs...');
+
+  while (isRunning) {
+    let processed = 0;
+    try {
+      processed += await consumeFilesystemQueue();
+      processed += await consumeDatabaseQueue();
+    } catch (err) {
+      logger.error({ err }, 'Unhandled error in worker loop cycle');
+    }
+
+    // Intervalo de repouso entre ciclos (3s)
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+
+  logger.info('Fiscal Worker Daemon stopped gracefully');
 }
+
+const shutdown = async (signal: string) => {
+  logger.info({ signal }, 'Received termination signal, shutting down gracefully...');
+  isRunning = false;
+  try {
+    await prisma.$disconnect();
+  } catch (err) {
+    logger.error({ err }, 'Error disconnecting Prisma on shutdown');
+  }
+  process.exit(0);
+};
+
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
+
+runLoop().catch((err) => {
+  logger.error(err, 'Worker fatal error');
+  process.exit(1);
+});

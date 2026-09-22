@@ -47,3 +47,7 @@ output "acm_validation_records" {
     }
   ]
 }
+output "ecs_worker_service_name" {
+  description = "Nome do serviço ECS do Worker"
+  value       = aws_ecs_service.worker.name
+}

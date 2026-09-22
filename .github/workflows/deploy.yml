@@ -50,7 +50,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # --- Atualizar Serviço no ECS Fargate ---
+      # --- Atualizar Serviços no ECS Fargate ---
       - name: Deploy to Amazon ECS Fargate
         run: |
           aws ecs update-service \
@@ -58,3 +58,9 @@ jobs:
             --service emissor-fiscal-api-staging \
             --force-new-deployment \
             --region sa-east-1
+          aws ecs update-service \
+            --cluster emissor-fiscal-cluster-staging \
+            --service emissor-fiscal-worker-staging \
+            --force-new-deployment \
+            --region sa-east-1
+
