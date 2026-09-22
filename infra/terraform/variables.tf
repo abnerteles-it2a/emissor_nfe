@@ -52,3 +52,10 @@ variable "api_subdomain" {
   description = "Subdomínio da API"
   default     = "api.nfe"
 }
+
+variable "github_token" {
+  type        = string
+  description = "Personal Access Token do GitHub para o Amplify (opcional)"
+  sensitive   = true
+  default     = ""
+}

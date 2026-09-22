@@ -39,10 +39,14 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
+data "aws_rds_engine_version" "postgres" {
+  engine = "postgres"
+}
+
 resource "aws_db_instance" "postgres" {
   identifier        = "${var.app_name}-db-${var.environment}"
   engine            = "postgres"
-  engine_version    = "16.4"
+  engine_version    = data.aws_rds_engine_version.postgres.version
   instance_class    = "db.t4g.micro"
   allocated_storage = 20
   storage_type      = "gp3"
