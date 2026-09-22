@@ -15,7 +15,7 @@ fiscal-platform/
 ├── apps/
 │   ├── api/          Fastify — entrada HTTP de todos os consumidores
 │   ├── worker/       Processamento fiscal assíncrono (filesystem queue → Prisma)
-│   └── web/          Portal standalone (emissão manual + gestão) — P3
+│   └── web/          Portal Next.js (Dashboard + Emissão + Certificados) — nfe.it2a.com
 ├── packages/
 │   ├── fiscal-core/  Interface FiscalAdapter + contratos de domínio
 │   ├── nfe-adapter/  NF-e: xml-builder, key-generator, sefaz-client, adapter
