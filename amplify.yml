@@ -1,0 +1,28 @@
+version: 1
+applications:
+  - appRoot: apps/web
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - corepack enable
+            - corepack prepare pnpm@9.0.0 --activate
+            - cd ../..
+            - pnpm install --frozen-lockfile --prod=false
+            - cd apps/web
+        build:
+          commands:
+            - env | grep -e NEXT_PUBLIC_ >> .env.production
+            - pnpm run build
+            - if [ -d ../../node_modules/next ]; then rm -rf ./node_modules/next && cp -r ../../node_modules/next ./node_modules/next; fi
+            - if [ -d ../../node_modules/@next ]; then rm -rf ./node_modules/@next && cp -r ../../node_modules/@next ./node_modules/@next; fi
+            - if [ -d ../../node_modules/react ]; then rm -rf ./node_modules/react && cp -r ../../node_modules/react ./node_modules/react; fi
+            - if [ -d ../../node_modules/react-dom ]; then rm -rf ./node_modules/react-dom && cp -r ../../node_modules/react-dom ./node_modules/react-dom; fi
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .next/cache/**/*
+          - node_modules/**/*

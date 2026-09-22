@@ -1,7 +1,9 @@
 resource "aws_amplify_app" "web" {
   name         = "${var.app_name}-web-${var.environment}"
+  platform     = "WEB_COMPUTE"
   repository   = var.github_token != "" ? var.github_repository : null
   access_token = var.github_token != "" ? var.github_token : null
+
 
   # Script de build nativo para o monorepo pnpm Next.js
   build_spec = <<-EOT
@@ -14,11 +16,17 @@ resource "aws_amplify_app" "web" {
               commands:
                 - corepack enable
                 - corepack prepare pnpm@9.0.0 --activate
-                - pnpm install --frozen-lockfile
+                - cd ../..
+                - pnpm install --frozen-lockfile --prod=false
+                - cd apps/web
             build:
               commands:
                 - env | grep -e NEXT_PUBLIC_ >> .env.production
                 - pnpm run build
+                - if [ -d ../../node_modules/next ]; then rm -rf ./node_modules/next && cp -r ../../node_modules/next ./node_modules/next; fi
+                - if [ -d ../../node_modules/@next ]; then rm -rf ./node_modules/@next && cp -r ../../node_modules/@next ./node_modules/@next; fi
+                - if [ -d ../../node_modules/react ]; then rm -rf ./node_modules/react && cp -r ../../node_modules/react ./node_modules/react; fi
+                - if [ -d ../../node_modules/react-dom ]; then rm -rf ./node_modules/react-dom && cp -r ../../node_modules/react-dom ./node_modules/react-dom; fi
           artifacts:
             baseDirectory: .next
             files:
@@ -30,9 +38,12 @@ resource "aws_amplify_app" "web" {
   EOT
 
   environment_variables = {
-    NEXT_PUBLIC_API_URL = "https://${var.api_subdomain}.${var.domain_name}"
-    NODE_ENV            = "production"
+    AMPLIFY_MONOREPO_APP_ROOT = "apps/web"
+    AMPLIFY_DIFF_DEPLOY       = "false"
+    NEXT_PUBLIC_API_URL       = "https://${var.api_subdomain}.${var.domain_name}"
+    NODE_ENV                  = "production"
   }
+
 
   enable_branch_auto_build = true
 }
@@ -60,4 +71,6 @@ resource "aws_amplify_domain_association" "domain" {
   }
 
   enable_auto_sub_domain = false
+  wait_for_verification  = false
 }
+
