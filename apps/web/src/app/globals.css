@@ -2,36 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #020617;
-  --foreground: #f8fafc;
-  --color-brand: #0D9488;
-  --color-brand-cyan: #00B4D8;
+@layer base {
+  :root {
+    --color-brand: #0D9488;
+    --color-omie-midnight: #001e2c;
+    --color-omie-sidebar: #020617;
+    --color-omie-blue: #00B4D8;
+    --color-omie-bg: #E9EDF0;
+    --color-omie-border: #CBD5E1;
+    --color-omie-text: #1A1A2E;
+    --color-omie-text-muted: #64748b;
+    --module-color: #0D9488;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased selection:bg-teal-500 selection:text-white;
+  }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-height: 100vh;
+/* ===== SPATIAL / GLASSMORPHISM UI TEST (PORTADO DO GESTOR FINANCEIRO) ===== */
+.bg-spatial {
+  background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
-/* Custom crisp scrollbar matching IT2A standard */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+}
+
+.glass-sidebar {
+  background: rgba(2, 6, 23, 0.88) !important;
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.omie-topbar {
+  height: 48px;
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.omie-card {
+  @apply bg-slate-900/90 border border-slate-800 rounded-xl shadow-sm backdrop-blur-sm;
+}
+
+/* Typography scale - Enterprise Focused */
+.text-label-caps {
+  @apply text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400;
+}
+
+/* High-contrast tables */
+.omie-table-container {
+  @apply bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-sm;
+}
+
+.omie-table {
+  @apply w-full text-left border-collapse;
+}
+
+.omie-table thead tr {
+  @apply bg-slate-950/80 border-b border-slate-800;
+}
+
+.omie-table th {
+  @apply px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap;
+}
+
+.omie-table tbody tr {
+  @apply border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors;
+}
+
+.omie-table td {
+  @apply px-4 py-3.5 text-xs font-medium text-slate-200 tabular-nums;
+}
+
+/* Custom Enterprise Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: rgba(2, 6, 23, 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: rgba(51, 65, 85, 0.6);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: rgba(13, 148, 136, 0.8);
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

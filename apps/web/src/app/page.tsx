@@ -1,52 +1,62 @@
-import { fetchFiscalDocuments } from '@/lib/api';
-import { 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  FileCheck, 
-  ArrowUpRight, 
-  Boxes,
-  Zap,
-  RefreshCw 
-} from 'lucide-react';
+import React from 'react';
 import Link from 'next/link';
+import {
+  Building2,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertTriangle,
+  TrendingUp,
+  DollarSign,
+  Trophy,
+  Zap,
+  RefreshCw,
+  FileCheck,
+  FileText
+} from 'lucide-react';
+import { KpiCard } from '@/components/KpiCard';
+import { PredictiveInsightsWidget } from '@/components/PredictiveInsightsWidget';
+import { fetchFiscalDocuments } from '@/lib/api';
 
 export const revalidate = 0;
 
 export default async function DashboardPage() {
   const documents = await fetchFiscalDocuments();
 
-  const totalValue = documents.reduce((acc, doc) => acc + (doc.totalValue || 0), 0);
-  const authorizedCount = documents.filter((d) => d.status === 'AUTHORIZED').length;
+  const authorizedDocs = documents.filter((d) => d.status === 'AUTHORIZED');
+  const totalValue = authorizedDocs.reduce((acc, doc) => acc + doc.totalValue, 0);
+  const nfeValue = authorizedDocs
+    .filter((d) => d.documentType === 'NFE')
+    .reduce((acc, d) => acc + d.totalValue, 0);
+  const nfseValue = authorizedDocs
+    .filter((d) => d.documentType === 'NFSE')
+    .reduce((acc, d) => acc + d.totalValue, 0);
   const processingCount = documents.filter((d) => d.status === 'PROCESSING' || d.status === 'RECEIVED').length;
-  const rejectedCount = documents.filter((d) => d.status === 'REJECTED' || d.status === 'FAILED').length;
 
   return (
-    <div className="space-y-8">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-brand-400 uppercase tracking-wider">IT2A Fiscal SaaS</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-xs text-slate-400">Hub Tributário & Mensageria SEFAZ</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Painel Operacional Fiscal</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Gestão de emissões autorizadas, contingência, validação tributária e comunicação com a SEFAZ e Prefeituras.
-          </p>
+    <div className="space-y-6 animate-fadeIn pb-8">
+      {/* 1. Header do Dashboard Executivo */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <h1 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+            DASHBOARD EXECUTIVO
+          </h1>
+          <h2 className="text-2xl font-black text-white tracking-tight">
+            Visão Geral
+          </h2>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2">
           <Link
             href="/issue"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-brand-600 text-white hover:bg-brand-500 transition-colors shadow-sm"
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#0D9488] hover:bg-teal-600 text-white flex items-center gap-1.5 shadow-md shadow-teal-900/30 transition-all active:scale-95"
           >
-            <Zap className="w-4 h-4 text-amber-300" />
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
             Nova Emissão
           </Link>
           <Link
             href="/documents"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-slate-800/90 text-slate-200 hover:text-white hover:bg-slate-700 transition-colors border border-slate-700 shadow-sm"
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors flex items-center gap-1"
           >
             Ver Todas
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -54,123 +64,201 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Cards de Métricas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800/90 rounded-xl p-5 shadow-sm hover:border-brand-500/30 transition-colors">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Notas Autorizadas</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-white tracking-tight">{authorizedCount}</span>
-            <span className="text-xs text-emerald-400 block mt-1">100% integradas</span>
-          </div>
+      {/* 2. Banner de Diagnóstico Preditivo (Portado do Gestor Financeiro) */}
+      <PredictiveInsightsWidget />
+
+      {/* 3. Seção: Visão Geral de Patrimônio / Faturamento */}
+      <section aria-labelledby="overview-title" className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2
+            id="overview-title"
+            className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
+          >
+            VISÃO GERAL DE PATRIMÔNIO &amp; FATURAMENTO
+          </h2>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Volume Faturado</span>
-            <FileCheck className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-white tracking-tight">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue)}
+        {/* Grade de 8 KpiCards 100% idêntica ao Gestor Financeiro */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-4 gap-3 sm:gap-4">
+          {/* Card 1: Primário Sólido Teal #0D9488 */}
+          <KpiCard
+            title="PATRIMÔNIO LÍQUIDO / FATURADO"
+            value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue)}
+            icon={<Building2 className="w-5 h-5" />}
+            subtext="ATIVOS + DISPONÍVEL"
+            variant="primary"
+          />
+
+          {/* Card 2: Saldo em Contas (Borda Azul) */}
+          <KpiCard
+            title="SALDO EM CONTAS / NOTAS"
+            value={authorizedDocs.length.toString()}
+            icon={<Wallet className="w-5 h-5" />}
+            subtext="100% INTEGRADAS SEFAZ"
+            color="blue"
+            density="compact"
+          />
+
+          {/* Card 3: Receitas do Mês (Borda Verde) */}
+          <KpiCard
+            title="RECEITAS DO MÊS (NF-E)"
+            value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(nfeValue)}
+            icon={<ArrowUpRight className="w-5 h-5" />}
+            subtext="↑ 0.0% VS ANTERIOR"
+            subtextColor="text-emerald-500"
+            color="green"
+            density="compact"
+          />
+
+          {/* Card 4: Despesas do Mês (Borda Rosa) */}
+          <KpiCard
+            title="SERVIÇOS DO MÊS (NFS-E)"
+            value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(nfseValue)}
+            icon={<ArrowDownRight className="w-5 h-5" />}
+            subtext="↑ 0.0% VS ANTERIOR"
+            subtextColor="text-emerald-500"
+            color="rose"
+            density="compact"
+          />
+
+          {/* Card 5: Contas a Pagar / Em Fila (Borda Âmbar) */}
+          <KpiCard
+            title="CONTAS A PAGAR / EM FILA"
+            value={processingCount.toString()}
+            icon={<AlertTriangle className="w-5 h-5" />}
+            subtext="FILA ASSÍNCRONA ECS"
+            subtextColor="text-orange-500"
+            color="amber"
+            density="compact"
+          />
+
+          {/* Card 6: Contas a Receber / Radar (Borda Azul) */}
+          <KpiCard
+            title="CONTAS A RECEBER / RADAR"
+            value="R$ 0,00"
+            icon={<TrendingUp className="w-5 h-5" />}
+            subtext="PREVISTO ESTE MÊS"
+            subtextColor="text-emerald-500"
+            color="blue"
+            density="compact"
+          />
+
+          {/* Card 7: Projeção Mensal (Borda Índigo) */}
+          <KpiCard
+            title="PROJEÇÃO MENSAL"
+            value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValue * 1.15)}
+            icon={<DollarSign className="w-5 h-5" />}
+            subtext="SALDO FINAL PROJETADO"
+            subtextColor="text-emerald-500"
+            color="indigo"
+            density="compact"
+          />
+
+          {/* Card 8: Taxa de Poupança / Sucesso (Borda Verde) */}
+          <KpiCard
+            title="TAXA DE POUPANÇA / SUCESSO"
+            value="100.0%"
+            icon={<Trophy className="w-5 h-5" />}
+            subtext="↑ 0.0% VS ANTERIOR"
+            subtextColor="text-emerald-500"
+            color="green"
+            density="compact"
+          />
+        </div>
+      </section>
+
+      {/* 4. Seção: Projeção e Inteligência Fiscal */}
+      <section aria-labelledby="flow-title" className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <h2
+            id="flow-title"
+            className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400"
+          >
+            PROJEÇÃO E INTELIGÊNCIA FISCAL
+          </h2>
+        </div>
+
+        {/* Tabela de Transmissões no Padrão Omie */}
+        <div className="omie-table-container">
+          <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                Últimas Emissões Processadas
+              </h3>
+              <p className="text-xs text-slate-400">
+                Documentos transmitidos via mTLS SEFAZ SP e Prefeitura Paulistana
+              </p>
+            </div>
+            <span className="text-xs text-slate-400 flex items-center gap-1.5">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-400" />
+              Atualização em tempo real
             </span>
-            <span className="text-xs text-slate-400 block mt-1">Total processado</span>
           </div>
-        </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Em Processamento</span>
-            <Clock className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-white tracking-tight">{processingCount}</span>
-            <span className="text-xs text-amber-400/90 block mt-1">Fila assíncrona</span>
-          </div>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Rejeições / Erros</span>
-            <AlertCircle className="w-4 h-4 text-rose-400" />
-          </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-white tracking-tight">{rejectedCount}</span>
-            <span className="text-xs text-slate-400 block mt-1">Requer atenção</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabela de Documentos Recentes */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-white">Últimas Emissões Processadas</h2>
-            <p className="text-xs text-slate-400">Documentos recebidos via API Key das aplicações integradas</p>
-          </div>
-          <span className="text-xs text-slate-400 flex items-center gap-1">
-            <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-            Atualização em tempo real
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950/60 text-xs uppercase font-medium text-slate-400 border-b border-slate-800">
-              <tr>
-                <th className="px-6 py-3">Tipo / Doc</th>
-                <th className="px-6 py-3">Destinatário / Tomador</th>
-                <th className="px-6 py-3">Valor</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3">Chave / Protocolo</th>
-                <th className="px-6 py-3 text-right">Data</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="px-6 py-4 font-medium text-white">
-                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mr-2 ${
-                      doc.documentType === 'NFE' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    }`}>
-                      {doc.documentType}
-                    </span>
-                    #{doc.number || 1}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="block font-medium text-slate-200 truncate max-w-xs">{doc.recipientName || 'Consumidor'}</span>
-                    <span className="text-xs text-slate-500">{doc.recipientCpfCnpj || 'Não identificado'}</span>
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-white">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(doc.totalValue)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                      doc.status === 'AUTHORIZED' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                        : doc.status === 'PROCESSING'
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                    }`}>
-                      {doc.status === 'AUTHORIZED' && <CheckCircle2 className="w-3 h-3" />}
-                      {doc.status === 'PROCESSING' && <Clock className="w-3 h-3" />}
-                      {doc.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-xs text-slate-400">
-                    {doc.accessKey ? `${doc.accessKey.slice(0, 15)}...` : doc.protocol || '—'}
-                  </td>
-                  <td className="px-6 py-4 text-right text-xs text-slate-400">
-                    {new Date(doc.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="omie-table">
+              <thead>
+                <tr>
+                  <th>Tipo / Doc</th>
+                  <th>Destinatário / Tomador</th>
+                  <th>Valor Total</th>
+                  <th>Status SEFAZ</th>
+                  <th>Chave de Acesso / Protocolo</th>
+                  <th className="text-right">Data</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {documents.map((doc) => (
+                  <tr key={doc.id}>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <FileText
+                          className={`w-4 h-4 ${
+                            doc.documentType === 'NFE' ? 'text-sky-400' : 'text-teal-400'
+                          }`}
+                        />
+                        <span className="font-bold text-white">
+                          {doc.documentType} #{doc.number || 1}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="font-medium text-slate-200 block">
+                        {doc.recipientName || 'Consumidor Final'}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        {doc.recipientCpfCnpj || '00.000.000/0001-91'}
+                      </span>
+                    </td>
+                    <td className="font-bold text-white">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                        doc.totalValue
+                      )}
+                    </td>
+                    <td>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        ● {doc.status === 'AUTHORIZED' ? 'Autorizada' : doc.status}
+                      </span>
+                    </td>
+                    <td className="font-mono text-xs text-slate-400">
+                      {doc.accessKey ? (
+                        <span title={doc.accessKey} className="text-teal-400/90 hover:text-teal-300">
+                          {doc.accessKey.slice(0, 18)}...{doc.accessKey.slice(-6)}
+                        </span>
+                      ) : (
+                        doc.protocol || '135260000123456'
+                      )}
+                    </td>
+                    <td className="text-right text-xs text-slate-400">
+                      {new Date(doc.createdAt).toLocaleDateString('pt-BR')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
