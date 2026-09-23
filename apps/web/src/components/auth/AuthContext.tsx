@@ -81,7 +81,15 @@ const DEFAULT_SUBSCRIPTION: SubscriptionInfo = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(DEFAULT_USER);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      const isChanged = localStorage.getItem('it2a_password_changed') === 'true';
+      if (isChanged) {
+        return { ...DEFAULT_USER, mustChangePassword: false };
+      }
+    }
+    return DEFAULT_USER;
+  });
   const [activeTenant, setActiveTenant] = useState<TenantInfo | null>(DEFAULT_IT2A_TENANT);
   const [tenants, setTenants] = useState<TenantInfo[]>([
     DEFAULT_IT2A_TENANT,
@@ -117,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (meData?.user) {
         setUser(meData.user);
-        if (meData.user.mustChangePassword) {
+        if (meData.user.mustChangePassword && localStorage.getItem('it2a_password_changed') !== 'true') {
           setShowPasswordChangeModal(true);
         }
       }
@@ -143,12 +151,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    refreshProfile();
-    // Exibe o modal de troca de senha se o usuário padrão precisar alterar
-    if (user?.mustChangePassword) {
-      setShowPasswordChangeModal(true);
+    if (typeof window !== 'undefined') {
+      const isChanged = localStorage.getItem('it2a_password_changed') === 'true';
+      if (!isChanged && user?.mustChangePassword) {
+        setShowPasswordChangeModal(true);
+      }
     }
-  }, [refreshProfile]);
+    refreshProfile();
+  }, [refreshProfile, user?.mustChangePassword]);
 
   const login = async (email: string, pass: string) => {
     setIsLoading(true);
@@ -206,8 +216,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res?.accessToken) {
       setStoredAuth(res.accessToken, activeTenant?.id || 'it2a-default-tenant');
     }
-    if (user) {
-      setUser({ ...user, mustChangePassword: false });
+    const updatedUser = user ? { ...user, mustChangePassword: false } : { ...DEFAULT_USER, mustChangePassword: false };
+    setUser(updatedUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('it2a_password_changed', 'true');
+      localStorage.setItem('it2a_user_profile', JSON.stringify(updatedUser));
     }
     setShowPasswordChangeModal(false);
   };
