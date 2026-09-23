@@ -55,8 +55,21 @@ updated: 2026-09-20
 
 ## Monorepo
 - packages/ (raiz) = workspace real (migrado de apps/packages/ em 2026-09-20)
-- apps/ = api, worker, web (web ainda vazio — P3)
+- apps/ = api, worker, web (Next.js 14 SSR no AWS Amplify — nfe.it2a.com)
 - pnpm-workspace.yaml: apps/*, packages/*, infra/*
+
+## Homologação e Garantia de Zero Risco Fiscal (Testes com CPF / CNPJ Válidos)
+- **Zero Passivo Tributário ou Contábil**: Testes realizados utilizando qualquer CPF ou CNPJ de tomador/destinatário em ambiente de Homologação **NÃO** geram impostos, guias de arrecadação, débitos na Receita Federal, SEFAZ ou Prefeitura, e não têm validade jurídica.
+- **Camada 1 — SEFAZ SP (`tpAmb = 2`)**:
+  - Endpoint exclusivo de testes: `https://homologacao.nfe.fazenda.sp.gov.br/...`
+  - Tag obrigatória `<tpAmb>2</tpAmb>`.
+  - Base de dados sandbox isolada da SEFAZ, sem comunicação com e-CAC ou malha fina.
+  - DANFE impresso com tarja d'água permanente: *"NF-E EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL"*.
+- **Camada 2 — Nota Paulistana (`TesteEnvioLoteRPS`)**:
+  - O sistema aciona o método de simulação/dry-run da Prefeitura de São Paulo (`TesteEnvioLoteRPS`), e NÃO o método de produção (`EnvioLoteRPS`).
+  - O WebService valida layout, certificado, cálculo e alíquota de ISS sem converter o RPS em NFS-e definitiva, garantindo ausência de débito tributário municipal.
+- **Camada 3 — Trava de Código e Configuração**:
+  - `environment: 'HOMOLOGATION'` é fixado nas chamadas da API e no Worker, garantindo que o chaveamento para produção seja um ato consciente e segregado.
 
 ## IA (P3)
 - Plataforma: Azure AI Foundry

@@ -1,96 +1,81 @@
 # CODEBASE.md — Emissor Fiscal SaaS
-> Atualizado: 2026-09-20 | Sprint P0
+> Atualizado: 2026-09-22 | Sprint P1 (Live AWS Staging + Homologação)
 
 ## Visão geral
 
-Plataforma SaaS fiscal multi-tenant independente. Consumida via API Key por:
+Plataforma SaaS fiscal multi-tenant independente, hospedada na AWS (sa-east-1). Consumida via API Key por:
 - Gestor Veterinário
 - ERP
 - Gestor Financeiro
+- Portal Web Next.js 14 (`https://nfe.it2a.com`)
+
+## URLs Ativas em Produção / Staging
+- **Portal Web**: `https://nfe.it2a.com` (AWS Amplify Next.js 14 SSR)
+- **API Fastify**: `https://api.nfe.it2a.com` (AWS ALB + ECS Fargate)
+- **PostgreSQL**: AWS RDS PostgreSQL 16 (`fiscal_platform`)
+- **Worker**: AWS ECS Fargate assíncrono (`emissor-fiscal-worker-staging`)
 
 ## Estrutura do Monorepo
 
 ```
 fiscal-platform/
 ├── apps/
-│   ├── api/          Fastify — entrada HTTP de todos os consumidores
-│   ├── worker/       Processamento fiscal assíncrono (filesystem queue → Prisma)
+│   ├── api/          Fastify — entrada HTTP de todos os consumidores (porta 3000)
+│   ├── worker/       Processamento fiscal assíncrono (Database Queue → SEFAZ / Prefeitura)
 │   └── web/          Portal Next.js (Dashboard + Emissão + Certificados) — nfe.it2a.com
 ├── packages/
 │   ├── fiscal-core/  Interface FiscalAdapter + contratos de domínio
-│   ├── nfe-adapter/  NF-e: xml-builder, key-generator, sefaz-client, adapter
+│   ├── nfe-adapter/  NF-e Modelo 55: xml-builder, key-generator, sefaz-client, adapter
+│   ├── nfse-adapter/ NFS-e São Paulo (Nota Paulistana): XMLDSig Enveloped + assinatura RPS
 │   ├── crypto/       parse A1 (.pfx), assinatura XML (xmldsig, xml-crypto)
 │   ├── tax-engine/   Cálculo ICMS/PIS/COFINS por regime (Simples/Normal)
 │   ├── database/     Prisma schema + client singleton + number-control
 │   ├── domain/       Entidades TypeScript puras (sem ORM)
 │   ├── nfce-adapter/ NFC-e (mod. 65) — P1
 │   ├── nfse-national/ NFS-e Nacional (SEFIN) — P3
-│   ├── queue/        BullMQ/Redis — P1 (atualmente filesystem)
-│   ├── storage/      S3/MinIO — P2
+│   ├── queue/        BullMQ/Redis — P1
+│   ├── storage/      S3 / MinIO — P2
 │   ├── auth/         JWT + API Keys — P2
 │   ├── webhooks/     Entrega de eventos — P2
 │   ├── ai-gateway/   Azure OpenAI (GPT-4o) — P3
 │   └── observability/ OpenTelemetry — P3
 ├── infra/
-│   └── docker/
-│       └── docker-compose.yml  PostgreSQL 16 + Redis 7 + MinIO
+│   └── terraform/    Terraform AWS (ECS Fargate, ALB, RDS, Amplify, Route53, ACM)
 └── docs/
-    ├── api/
-    │   └── INTEGRATION.md      Como consumidores integram
-    └── fiscal/
-        └── ADAPTERS.md         Status por UF e documento
+    ├── api/          Como consumidores integram
+    └── fiscal/       Status por UF e documento
 ```
 
-## Dependências entre Packages
+## Fluxo de Emissão Real em Homologação
 
 ```
-api
-  └── @fiscal/database      (Prisma client, FiscalDocument CRUD)
-  └── @fiscal/fiscal-core   (tipos DocumentPayload)
-
-worker
-  └── @fiscal/nfe-adapter   (NfeAdapter.issue())
-  └── @fiscal/database      (salva FiscalAttempt, atualiza status)
-  └── @fiscal/fiscal-core   (interfaces)
-
-@fiscal/nfe-adapter
-  └── @fiscal/fiscal-core   (FiscalAdapter interface)
-  └── @fiscal/crypto        (parsePfx, signXml)
-  └── @fiscal/tax-engine    (processTaxEngine)
-
-@fiscal/nfe-adapter/xml-builder
-  └── @fiscal/tax-engine    (cálculo de ICMS/PIS/COFINS)
-  └── @fiscal/nfe-adapter/key-generator
-
-@fiscal/database
-  └── @prisma/client
-```
-
-## Fluxo de Emissão (P0)
-
-```
-1. Cliente POST /v1/fiscal/documents
+1. Cliente POST https://api.nfe.it2a.com/v1/fiscal/documents
      x-tenant-id: <id>
-     Idempotency-Key: <chave>
+     idempotency-key: <chave>
 
-2. API valida payload (Zod) → cria FiscalDocument (status=RECEIVED) no Prisma
-   → grava JSON na fila filesystem (data/queue-issue/<id>.json)
-   → retorna 202 com o documento
+2. API valida payload (Zod) → cria FiscalDocument (status=RECEIVED) no RDS PostgreSQL
+   → Enfileira para processamento assíncrono
+   → Retorna HTTP 202 com os metadados do documento
 
-3. Worker (pnpm dev:worker) lê arquivo da fila
-   → instancia NfeAdapter com env vars CERT_PFX_BASE64 + CERT_PASSWORD
-   → chama adapter.issue()
-     → buildNFeXml() → processTaxEngine() → XML montado
-     → signXml() → XML assinado com cert A1
-     → SefazClient.authorize() → POST SOAP SEFAZ SP homologação
-     → retorna { status, accessKey, protocol }
-   → salva FiscalAttempt no banco
-   → atualiza FiscalDocument (status=AUTHORIZED/REJECTED)
-   → deleta arquivo da fila
+3. Worker Fargate consome o lote do banco PostgreSQL (status=RECEIVED)
+   → Atualiza status para PROCESSING
+   → Instancia o adaptador correto (NfeAdapter para NF-e ou NfseAdapter para NFS-e)
+   → Carrega o Certificado Digital A1 IT2A (SyngularID)
+   → Gera o XML oficial (NF-e 4.00 ou RPS Paulistana) e assina digitalmente com SHA-1 / RSA
+   → Transmite via mTLS para o WebService oficial de Homologação:
+       • NF-e: SEFAZ SP (nfeautorizacao4.asmx) — tpAmb=2
+       • NFS-e: Prefeitura de SP (TesteEnvioLoteRPS)
+   → Grava FiscalAttempt no banco com cStat, mensagem oficial, durationMs e rawResponse
+   → Atualiza FiscalDocument para status AUTHORIZED ou REJECTED
 
-4. Cliente GET /v1/fiscal/documents/:id
-   → retorna status atual + últimas 5 tentativas
+4. Cliente / Frontend faz Polling em GET /v1/fiscal/documents/:id
+   → Exibe badge com cStat oficial (100, 209, 1207), tempo em ms e chave de acesso
+   → Permite visualizar e baixar o XML assinado via GET /v1/fiscal/documents/:id/xml
 ```
+
+## Garantia de Homologação e Isenção Fiscal
+- **Zero Passivo Fiscal**: O ambiente de homologação (`tpAmb = 2` na SEFAZ SP e `TesteEnvioLoteRPS` na Prefeitura de SP) opera em sandbox estrito. Qualquer teste realizado com CPF ou CNPJ válido de tomador **NÃO gera guia de imposto, não gera ISS/ICMS e não possui valor fiscal ou jurídico**.
+
 
 ## Variáveis de Ambiente Críticas
 
