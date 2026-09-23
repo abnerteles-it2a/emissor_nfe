@@ -16,8 +16,8 @@ import {
 import { Header } from '@/components/Header';
 
 export const metadata: Metadata = {
-  title: 'IT2A Fiscal — Emissor SaaS e Inteligência Tributária',
-  description: 'Plataforma corporativa de emissão fiscal multi-tenant para NF-e, NFS-e, NFC-e e Radar DF-e.',
+  title: 'Emissor Fiscal — Painel Operacional',
+  description: 'Plataforma de emissão e monitoramento de documentos fiscais eletrônicos (NF-e, NFS-e).',
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="pt-BR" className="dark">
       <body className="bg-[#020617] text-slate-100 min-h-screen overflow-hidden antialiased font-sans">
         <div className="flex h-screen overflow-hidden bg-[#020617]">
-          {/* SIDEBAR CORPORATIVA IT2A */}
+          {/* SIDEBAR CORPORATIVA */}
           <aside className="w-64 bg-[#020617] border-r border-slate-800 flex flex-col justify-between shrink-0 h-screen sticky top-0 z-40 text-slate-300 shadow-xl">
             {/* Top Brand Section */}
             <div>
@@ -50,21 +50,6 @@ export default function RootLayout({
                   </span>
                   <span className="block text-[8.5px] text-slate-400 font-extrabold truncate uppercase tracking-[0.14em]">
                     ENTERPRISE ECOSYSTEM
-                  </span>
-                </div>
-              </div>
-
-              {/* User Identity Strip */}
-              <div className="px-4 py-2 border-b border-slate-800 bg-slate-950">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#0D9488]/20 flex items-center justify-center text-[10px] font-black text-[#0D9488] shrink-0 border border-teal-500/30">
-                    A
-                  </div>
-                  <p className="text-[11px] font-medium text-slate-300 truncate flex-1">
-                    abnerteles77@gmail.com
-                  </p>
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-[#0D9488]/20 text-[#0D9488] shrink-0 border border-[#0D9488]/30">
-                    Admin
                   </span>
                 </div>
               </div>
