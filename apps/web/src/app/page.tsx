@@ -9,12 +9,10 @@ import {
   AlertTriangle,
   Radar,
   ShieldCheck,
-  Zap,
   ArrowUpRight,
   RefreshCw
 } from 'lucide-react';
 import { KpiCard } from '@/components/KpiCard';
-import { PredictiveInsightsWidget } from '@/components/PredictiveInsightsWidget';
 import { fetchFiscalDocuments } from '@/lib/api';
 
 export const revalidate = 0;
@@ -34,7 +32,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6 animate-fadeIn pb-8">
       {/* 1. Header Executivo do Emissor Fiscal */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-0.5">
           <h1 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
             DASHBOARD EXECUTIVO
@@ -44,26 +42,11 @@ export default async function DashboardPage() {
           </h2>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href="/issue"
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#0D9488] hover:bg-teal-600 text-white flex items-center gap-1.5 shadow-md shadow-teal-900/30 transition-all active:scale-95"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-300" />
-            Nova Emissão
-          </Link>
-          <Link
-            href="/documents"
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors flex items-center gap-1"
-          >
-            Ver Documentos
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
+        <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-900/80 border border-slate-800 px-3.5 py-1.5 rounded-xl">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-slate-300 font-medium">Sincronizado SEFAZ SP &amp; Paulistana</span>
         </div>
       </div>
-
-      {/* 2. Banner de Diagnóstico Preditivo Fiscal */}
-      <PredictiveInsightsWidget />
 
       {/* 3. Seção: Métricas Fiscais (Visual 100% Gestor Financeiro, Dados 100% Fiscais) */}
       <section aria-labelledby="overview-title" className="space-y-3">
