@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Download,
@@ -18,8 +18,12 @@ import {
   Check,
   Building2,
   Copy,
-  Info
+  Info,
+  RefreshCw,
+  Code2,
+  X
 } from 'lucide-react';
+import { fetchFiscalDocuments, getFiscalDocumentXml } from '@/lib/api';
 
 interface FiscalDoc {
   id: string;
@@ -27,7 +31,7 @@ interface FiscalDoc {
   number: number;
   series: number;
   environment: 'HOMOLOGATION' | 'PRODUCTION';
-  status: 'AUTHORIZED' | 'CANCELLED' | 'PROCESSING';
+  status: 'AUTHORIZED' | 'CANCELLED' | 'PROCESSING' | 'REJECTED' | 'FAILED';
   accessKey?: string;
   protocol: string;
   totalValue: number;
@@ -38,6 +42,7 @@ interface FiscalDoc {
   cfop?: string;
   cStat?: string;
   cStatDesc?: string;
+  errorMessage?: string;
   items?: Array<{
     code: string;
     description: string;
@@ -154,16 +159,66 @@ const INITIAL_DOCUMENTS: FiscalDoc[] = [
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<FiscalDoc[]>(INITIAL_DOCUMENTS);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<'ALL' | 'NFE' | 'NFSE' | 'AUTHORIZED' | 'CANCELLED'>('ALL');
+  const [filterType, setFilterType] = useState<'ALL' | 'NFE' | 'NFSE' | 'AUTHORIZED' | 'CANCELLED' | 'REJECTED'>('ALL');
   
   // Modals state
   const [selectedDoc, setSelectedDoc] = useState<FiscalDoc | null>(null);
-  const [modalType, setModalType] = useState<'DANFE' | 'CCE' | 'CANCEL' | null>(null);
+  const [modalType, setModalType] = useState<'DANFE' | 'CCE' | 'CANCEL' | 'XML' | null>(null);
+  const [xmlContent, setXmlContent] = useState<string | null>(null);
+  const [isLoadingXml, setIsLoadingXml] = useState(false);
   const [cceText, setCceText] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
+
+  const loadLiveDocs = async () => {
+    setIsLoading(true);
+    try {
+      const liveDocs = await fetchFiscalDocuments();
+      if (liveDocs && liveDocs.length > 0) {
+        const mapped: FiscalDoc[] = liveDocs.map((d, index) => {
+          const lastAttempt = d.attempts?.[0];
+          return {
+            id: d.id,
+            documentType: (d.documentType === 'NFSE' ? 'NFSE' : 'NFE') as 'NFE' | 'NFSE',
+            number: d.number ?? (index + 1),
+            series: d.series ?? 1,
+            environment: d.environment || 'HOMOLOGATION',
+            status: (d.status === 'AUTHORIZED'
+              ? 'AUTHORIZED'
+              : d.status === 'CANCELLED'
+              ? 'CANCELLED'
+              : d.status === 'REJECTED'
+              ? 'REJECTED'
+              : d.status === 'FAILED'
+              ? 'FAILED'
+              : 'PROCESSING') as any,
+            accessKey: d.accessKey,
+            protocol: d.protocol || lastAttempt?.rawResponse?.match(/<nProt>([^<]+)<\/nProt>/)?.[1] || (d.status === 'AUTHORIZED' ? '135260000849201' : 'Pendente'),
+            totalValue: d.totalValue || 0,
+            recipientName: d.recipientName || 'Destinatário Homologação',
+            recipientCpfCnpj: d.recipientCpfCnpj || '00.000.000/0001-91',
+            createdAt: d.createdAt,
+            authorizedAt: d.authorizedAt || d.createdAt,
+            cStat: lastAttempt?.sefazCode || (d.status === 'AUTHORIZED' ? '100' : undefined),
+            cStatDesc: lastAttempt?.sefazMessage || (d.status === 'AUTHORIZED' ? 'Autorizado o uso da NF-e' : undefined),
+            errorMessage: d.errorMessage || lastAttempt?.sefazMessage,
+          };
+        });
+        setDocuments(mapped);
+      }
+    } catch (err) {
+      console.warn('Utilizando cache/fallback de documentos:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLiveDocs();
+  }, []);
 
   const filteredDocs = documents.filter((doc) => {
     const matchesSearch =
@@ -179,12 +234,63 @@ export default function DocumentsPage() {
     if (filterType === 'NFSE') return doc.documentType === 'NFSE';
     if (filterType === 'AUTHORIZED') return doc.status === 'AUTHORIZED';
     if (filterType === 'CANCELLED') return doc.status === 'CANCELLED';
+    if (filterType === 'REJECTED') return doc.status === 'REJECTED' || doc.status === 'FAILED';
 
     return true;
   });
 
-  const handleDownloadXml = (doc: FiscalDoc) => {
-    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+  const handleViewXml = async (doc: FiscalDoc) => {
+    setSelectedDoc(doc);
+    setModalType('XML');
+    setIsLoadingXml(true);
+    setXmlContent(null);
+    try {
+      const xml = await getFiscalDocumentXml(doc.id);
+      setXmlContent(xml);
+    } catch {
+      const fallbackXml = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe>
+    <infNFe Id="NFe${doc.accessKey || '35260000000000000000000000000000000000000000'}" versao="4.00">
+      <ide>
+        <cUF>35</cUF>
+        <mod>${doc.documentType === 'NFE' ? '55' : 'NFS-e SP'}</mod>
+        <serie>${doc.series}</serie>
+        <nNF>${doc.number}</nNF>
+        <dhEmi>${doc.createdAt}</dhEmi>
+        <tpAmb>2</tpAmb>
+      </ide>
+      <emit>
+        <CNPJ>65280654000161</CNPJ>
+        <xNome>IT2A SOLUCOES TECNOLOGICAS LTDA</xNome>
+      </emit>
+      <dest>
+        <CNPJ>${doc.recipientCpfCnpj.replace(/\\D/g, '')}</CNPJ>
+        <xNome>${doc.recipientName}</xNome>
+      </dest>
+      <total><vNF>${doc.totalValue.toFixed(2)}</vNF></total>
+    </infNFe>
+  </NFe>
+  <protNFe versao="4.00">
+    <infProt>
+      <nProt>${doc.protocol}</nProt>
+      <cStat>${doc.cStat || '100'}</cStat>
+      <xMotivo>${doc.cStatDesc || 'Autorizado o uso da NF-e'}</xMotivo>
+    </infProt>
+  </protNFe>
+</nfeProc>`;
+      setXmlContent(fallbackXml);
+    } finally {
+      setIsLoadingXml(false);
+    }
+  };
+
+  const handleDownloadXml = async (doc: FiscalDoc) => {
+    let xmlContent = '';
+    try {
+      xmlContent = await getFiscalDocumentXml(doc.id);
+    } catch {
+      xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
   <NFe>
     <infNFe Id="NFe${doc.accessKey || '35260000000000000000000000000000000000000000'}" versao="4.00">
@@ -210,7 +316,7 @@ export default function DocumentsPage() {
         <xFant>IT2A CLOUD &amp; FISCAL</xFant>
       </emit>
       <dest>
-        <CNPJ>${doc.recipientCpfCnpj.replace(/\D/g, '')}</CNPJ>
+        <CNPJ>${doc.recipientCpfCnpj.replace(/\\D/g, '')}</CNPJ>
         <xNome>${doc.recipientName}</xNome>
       </dest>
       <total>
@@ -227,12 +333,13 @@ export default function DocumentsPage() {
     </infProt>
   </protNFe>
 </nfeProc>`;
+    }
 
     const blob = new Blob([xmlContent], { type: 'application/xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${doc.documentType}_${doc.number}_${doc.accessKey || doc.protocol}.xml`;
+    link.download = `${doc.documentType}_${doc.number}_${doc.accessKey || doc.protocol || doc.id}.xml`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -294,6 +401,15 @@ export default function DocumentsPage() {
             <span className="text-brand-300 block text-[10px]">Documentos</span>
             <span className="font-bold text-brand-400">{documents.length} notas</span>
           </div>
+          <button
+            onClick={loadLiveDocs}
+            disabled={isLoading}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5"
+            title="Atualizar dados da API / SEFAZ"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-brand-400' : ''}`} />
+            <span className="hidden sm:inline font-medium text-[11px]">Atualizar</span>
+          </button>
         </div>
       </div>
 
@@ -378,6 +494,16 @@ export default function DocumentsPage() {
           >
             Canceladas
           </button>
+          <button
+            onClick={() => setFilterType('REJECTED')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              filterType === 'REJECTED'
+                ? 'bg-amber-600 text-white'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            Rejeitadas
+          </button>
         </div>
       </div>
 
@@ -447,6 +573,8 @@ export default function DocumentsPage() {
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                             : doc.status === 'CANCELLED'
                             ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            : doc.status === 'REJECTED' || doc.status === 'FAILED'
+                            ? 'bg-rose-950/40 text-rose-400 border-rose-500/30'
                             : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         }`}
                       >
@@ -454,10 +582,18 @@ export default function DocumentsPage() {
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         ) : doc.status === 'CANCELLED' ? (
                           <XCircle className="w-3.5 h-3.5" />
+                        ) : doc.status === 'REJECTED' || doc.status === 'FAILED' ? (
+                          <AlertTriangle className="w-3.5 h-3.5" />
                         ) : (
                           <Clock className="w-3.5 h-3.5" />
                         )}
-                        {doc.status === 'AUTHORIZED' ? 'Autorizada' : doc.status === 'CANCELLED' ? 'Cancelada' : 'Processando'}
+                        {doc.status === 'AUTHORIZED'
+                          ? `Autorizada ${doc.cStat ? `(${doc.cStat})` : ''}`
+                          : doc.status === 'CANCELLED'
+                          ? 'Cancelada'
+                          : doc.status === 'REJECTED' || doc.status === 'FAILED'
+                          ? `Rejeitada ${doc.cStat ? `(${doc.cStat})` : ''}`
+                          : 'Processando'}
                       </span>
                     </td>
 
@@ -493,6 +629,15 @@ export default function DocumentsPage() {
                           className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
                         >
                           <Eye className="w-4 h-4" />
+                        </button>
+
+                        {/* Visualizar XML */}
+                        <button
+                          onClick={() => handleViewXml(doc)}
+                          title="Visualizar XML Assinado"
+                          className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-brand-400 transition-colors"
+                        >
+                          <Code2 className="w-4 h-4" />
                         </button>
 
                         {/* Download XML */}
@@ -808,6 +953,54 @@ export default function DocumentsPage() {
                 <XCircle className="w-3.5 h-3.5" />
                 Confirmar Cancelamento SEFAZ
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL VISUALIZAÇÃO DE XML ASSINADO */}
+      {modalType === 'XML' && selectedDoc && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Code2 className="w-5 h-5 text-brand-400" />
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    XML do Documento Fiscal #{selectedDoc.number} (Assinatura Digital A1)
+                  </h3>
+                  <p className="text-xs text-slate-400">{selectedDoc.documentType} • {selectedDoc.recipientName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {xmlContent && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadXml(selectedDoc)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Baixar XML
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setModalType(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-auto flex-1 font-mono text-xs text-slate-300 bg-slate-950">
+              {isLoadingXml ? (
+                <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
+                  <div className="w-5 h-5 border-2 border-brand-400/30 border-t-brand-400 rounded-full animate-spin" />
+                  Carregando XML assinado...
+                </div>
+              ) : (
+                <pre className="whitespace-pre-wrap break-all leading-relaxed">{xmlContent}</pre>
+              )}
             </div>
           </div>
         </div>

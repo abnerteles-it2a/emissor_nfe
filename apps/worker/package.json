@@ -12,6 +12,7 @@
     "@fiscal/database": "workspace:*",
     "@fiscal/fiscal-core": "workspace:*",
     "@fiscal/nfe-adapter": "workspace:*",
+    "@fiscal/nfse-adapter": "workspace:*",
     "pino": "^9.14.0",
     "pino-pretty": "^11.3.0"
   },

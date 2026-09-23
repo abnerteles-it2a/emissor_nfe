@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   Building2, 
   UserCheck, 
@@ -9,12 +10,18 @@ import {
   Send, 
   FileCode2, 
   CheckCircle2, 
-  AlertCircle,
-  Plus,
-  Trash2,
-  Sparkles,
-  ShieldAlert
+  AlertCircle, 
+  Plus, 
+  Trash2, 
+  Sparkles, 
+  ShieldAlert,
+  Copy,
+  ExternalLink,
+  Code2,
+  X,
+  Clock
 } from 'lucide-react';
+import { issueFiscalDocument, pollFiscalDocument, getFiscalDocumentXml } from '@/lib/api';
 
 interface ItemRow {
   id: string;
@@ -49,12 +56,20 @@ export default function IssuePage() {
 
   // Transmissão
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progressMessage, setProgressMessage] = useState<string>('');
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [xmlContent, setXmlContent] = useState<string | null>(null);
+  const [isLoadingXml, setIsLoadingXml] = useState(false);
+  const [xmlModalOpen, setXmlModalOpen] = useState(false);
+
   const [transmissionResult, setTransmissionResult] = useState<{
     status: 'SUCCESS' | 'ERROR';
     message: string;
     protocol?: string;
     key?: string;
-    cStat?: number;
+    cStat?: string | number;
+    docId?: string;
+    durationMs?: number;
   } | null>(null);
 
   const addItem = () => {
@@ -94,29 +109,93 @@ export default function IssuePage() {
   const handleTransmit = async () => {
     setIsSubmitting(true);
     setTransmissionResult(null);
+    setXmlContent(null);
+    setProgressMessage('1/3 Gravando lote fiscal na API e banco PostgreSQL RDS...');
 
     try {
-      // Simulação da chamada do WebService com a assinatura do Certificado A1 IT2A
-      await new Promise((resolve) => setTimeout(resolve, 1800));
-
-      const generatedKey = `3526096528065400016155001000${Math.floor(100000 + Math.random() * 900000)}1355195381`;
-      
-      setTransmissionResult({
-        status: 'SUCCESS',
-        message: docType === 'NFE' 
-          ? 'NF-e Modelo 55 autorizada com sucesso na SEFAZ SP!' 
-          : 'NFS-e autorizada e emitida na Prefeitura de São Paulo (Nota Paulistana)!',
-        protocol: `1352600${Math.floor(100000000 + Math.random() * 900000000)}`,
-        key: generatedKey,
-        cStat: 100
+      // 1. Envia lote para a API
+      const initialDoc = await issueFiscalDocument({
+        documentType: docType,
+        environment: 'HOMOLOGATION',
+        natureOfOperation: naturezaOperacao,
+        recipientName: destName,
+        recipientCpfCnpj: destCpfCnpj,
+        recipientUf: destUf,
+        recipientCity: destCity,
+        items,
+        totalValue,
       });
+
+      // 2. Aguarda processamento assíncrono pelo Worker Fargate e SEFAZ
+      setProgressMessage(
+        `2/3 Lote registrado (#${initialDoc.id.slice(0, 8)}). Assinando com Certificado A1 IT2A e enviando à ${
+          docType === 'NFE' ? 'SEFAZ SP' : 'Prefeitura de SP'
+        }...`
+      );
+
+      const finalDoc = await pollFiscalDocument(initialDoc.id, 25, 1200);
+
+      setProgressMessage('3/3 Recebendo e validando recibo oficial...');
+
+      const lastAttempt = finalDoc.attempts?.[0];
+
+      if (finalDoc.status === 'AUTHORIZED') {
+        setTransmissionResult({
+          status: 'SUCCESS',
+          message:
+            docType === 'NFE'
+              ? 'NF-e Modelo 55 autorizada com sucesso na SEFAZ SP!'
+              : 'NFS-e autorizada e emitida na Prefeitura de São Paulo!',
+          protocol: finalDoc.protocol || lastAttempt?.rawResponse?.match(/<nProt>([^<]+)<\/nProt>/)?.[1] || 'Autorizada',
+          key: finalDoc.accessKey,
+          cStat: lastAttempt?.sefazCode || 100,
+          docId: finalDoc.id,
+          durationMs: lastAttempt?.durationMs,
+        });
+      } else {
+        setTransmissionResult({
+          status: 'ERROR',
+          message:
+            finalDoc.errorMessage ||
+            lastAttempt?.sefazMessage ||
+            'A SEFAZ ou Prefeitura retornou rejeição na validação do lote fiscal.',
+          protocol: finalDoc.protocol,
+          key: finalDoc.accessKey,
+          cStat: finalDoc.errorCode || lastAttempt?.sefazCode || 'REJEITADA',
+          docId: finalDoc.id,
+          durationMs: lastAttempt?.durationMs,
+        });
+      }
     } catch (err: any) {
       setTransmissionResult({
         status: 'ERROR',
-        message: err.message || 'Erro de comunicação com o WebService fiscal.'
+        message: err.message || 'Falha de comunicação com o WebService da API.',
       });
     } finally {
       setIsSubmitting(false);
+      setProgressMessage('');
+    }
+  };
+
+  const handleCopyKey = () => {
+    if (transmissionResult?.key) {
+      navigator.clipboard.writeText(transmissionResult.key);
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    }
+  };
+
+  const handleOpenXml = async () => {
+    if (!transmissionResult?.docId) return;
+    setIsLoadingXml(true);
+    setXmlModalOpen(true);
+    try {
+      const xml = await getFiscalDocumentXml(transmissionResult.docId);
+      setXmlContent(xml);
+    } catch {
+      setXmlContent('<erro>Não foi possível carregar o XML</erro>');
+    } finally {
+      setIsLoadingXml(false);
     }
   };
 
@@ -399,35 +478,107 @@ export default function IssuePage() {
           </div>
         </div>
 
-        {/* Feedback da Transmissão */}
-        {transmissionResult && (
+        {/* Progresso durante a Transmissão */}
+        {isSubmitting && (
+          <div className="p-5 rounded-xl border border-brand-500/30 bg-brand-950/20 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-brand-400/30 border-t-brand-400 rounded-full animate-spin shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-brand-300">Processando Comunicação Fiscal</p>
+                <p className="text-xs text-slate-300">{progressMessage}</p>
+              </div>
+            </div>
+            <div className="mt-3 w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+              <div className="bg-brand-500 h-1.5 rounded-full animate-pulse w-3/4" />
+            </div>
+          </div>
+        )}
+
+        {/* Feedback da Transmissão / Retorno SEFAZ */}
+        {transmissionResult && !isSubmitting && (
           <div
-            className={`p-4 rounded-xl border mb-6 text-sm ${
+            className={`p-5 rounded-xl border mb-6 text-sm ${
               transmissionResult.status === 'SUCCESS'
-                ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
-                : 'bg-rose-950/20 border-rose-500/40 text-rose-300'
+                ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-200'
+                : 'bg-rose-950/20 border-rose-500/40 text-rose-200'
             }`}
           >
-            <div className="flex items-start gap-3">
-              {transmissionResult.status === 'SUCCESS' ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-              )}
-              <div className="space-y-1">
-                <p className="font-semibold">{transmissionResult.message}</p>
-                {transmissionResult.protocol && (
-                  <p className="text-xs text-slate-300">
-                    Protocolo de Autorização:{' '}
-                    <span className="font-mono text-emerald-400 font-bold">{transmissionResult.protocol}</span>
-                  </p>
+            <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                {transmissionResult.status === 'SUCCESS' ? (
+                  <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-6 h-6 text-rose-400 shrink-0 mt-0.5" />
                 )}
-                {transmissionResult.key && (
-                  <p className="text-xs text-slate-300 break-all">
-                    Chave de Acesso:{' '}
-                    <span className="font-mono text-brand-300">{transmissionResult.key}</span>
-                  </p>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                        transmissionResult.status === 'SUCCESS'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      }`}
+                    >
+                      {transmissionResult.status === 'SUCCESS'
+                        ? `cStat ${transmissionResult.cStat || 100} • Autorizado`
+                        : `cStat ${transmissionResult.cStat || 'REJEITADO'}`}
+                    </span>
+                    {transmissionResult.durationMs && (
+                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {transmissionResult.durationMs}ms
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="font-semibold text-white text-base">{transmissionResult.message}</p>
+
+                  {transmissionResult.protocol && (
+                    <p className="text-xs text-slate-300">
+                      Protocolo SEFAZ / Paulistana:{' '}
+                      <span className="font-mono text-emerald-400 font-bold">{transmissionResult.protocol}</span>
+                    </p>
+                  )}
+
+                  {transmissionResult.key && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-xs text-slate-400">Chave de Acesso:</span>
+                      <code className="text-xs font-mono bg-slate-950 px-2 py-1 rounded text-brand-300 border border-slate-800 break-all">
+                        {transmissionResult.key}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopyKey}
+                        className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                        title="Copiar Chave de Acesso"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      {copiedKey && <span className="text-[10px] text-emerald-400 font-semibold">Copiado!</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Botões contextuais de resultado */}
+              <div className="flex flex-row md:flex-col items-center md:items-end gap-2 shrink-0">
+                {transmissionResult.docId && (
+                  <button
+                    type="button"
+                    onClick={handleOpenXml}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 transition-colors"
+                  >
+                    <Code2 className="w-3.5 h-3.5 text-brand-400" />
+                    Visualizar XML
+                  </button>
                 )}
+                <Link
+                  href="/documents"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                  Ver Documentos
+                </Link>
               </div>
             </div>
           </div>
@@ -455,6 +606,56 @@ export default function IssuePage() {
           </button>
         </div>
       </div>
+
+      {/* Modal do XML */}
+      {xmlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Code2 className="w-5 h-5 text-brand-400" />
+                <h3 className="text-base font-bold text-white">XML do Documento Fiscal (Assinado Digitalmente)</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {xmlContent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const blob = new Blob([xmlContent], { type: 'application/xml' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${transmissionResult?.key || 'documento'}.xml`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                  >
+                    Baixar XML
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setXmlModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-auto flex-1 font-mono text-xs text-slate-300 bg-slate-950">
+              {isLoadingXml ? (
+                <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
+                  <div className="w-5 h-5 border-2 border-brand-400/30 border-t-brand-400 rounded-full animate-spin" />
+                  Carregando XML assinado...
+                </div>
+              ) : (
+                <pre className="whitespace-pre-wrap break-all leading-relaxed">{xmlContent}</pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

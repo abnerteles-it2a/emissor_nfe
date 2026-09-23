@@ -24,8 +24,16 @@ const build = async () => {
   // TODO P1: substituir por fastify-metrics compatível com ESM
   app.get('/metrics', async () => ({ status: 'ok', uptime: process.uptime() }));
 
-  // ── Guard: tenant + idempotency key ────────────────────────
+  // ── Guard: tenant + idempotency key + CORS ────────────────────────
   app.addHook('onRequest', async (req, reply) => {
+    reply.header('Access-Control-Allow-Origin', '*');
+    reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant-id, idempotency-key');
+
+    if (req.method === 'OPTIONS') {
+      return reply.code(204).send();
+    }
+
     if (req.url === '/health' || req.url === '/metrics' || req.url === '/ping') return;
 
     const tenantId = req.headers['x-tenant-id'];
@@ -115,6 +123,22 @@ const build = async () => {
     return reply.send(doc);
   });
 
+  // ── GET /v1/fiscal/documents/:id/xml ────────────────────────
+  app.get<{ Params: { id: string } }>('/v1/fiscal/documents/:id/xml', async (req, reply) => {
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    const doc = await prisma.fiscalDocument.findFirst({
+      where: { id: req.params.id, tenantId },
+      include: { attempts: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    });
+
+    if (!doc) return reply.code(404).send({ error: 'DOCUMENT_NOT_FOUND' });
+
+    const rawResponse = doc.attempts[0]?.rawResponse;
+    reply.header('Content-Type', 'application/xml; charset=utf-8');
+    return reply.send(rawResponse || '<status>DOCUMENT_PROCESSING</status>');
+  });
+
   // ── GET /v1/fiscal/documents ────────────────────────────────
   app.get('/v1/fiscal/documents', async (req, reply) => {
     const tenantId = req.headers['x-tenant-id'] as string;
@@ -125,8 +149,9 @@ const build = async () => {
         tenantId,
         ...(query.status ? { status: query.status as 'RECEIVED' | 'AUTHORIZED' } : {}),
       },
+      include: { attempts: { orderBy: { createdAt: 'desc' }, take: 1 } },
       orderBy: { createdAt: 'desc' },
-      take: Math.min(Number(query.limit ?? 20), 100),
+      take: Math.min(Number(query.limit ?? 50), 100),
       skip: Number(query.offset ?? 0),
     });
 
