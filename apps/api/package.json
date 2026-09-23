@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fiscal/ai-gateway": "workspace:*",
+    "@fiscal/auth": "workspace:*",
     "@fiscal/database": "workspace:*",
     "@fiscal/fiscal-core": "workspace:*",
     "fastify": "^4.29.1",

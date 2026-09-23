@@ -11,10 +11,13 @@ import {
 } from 'lucide-react';
 import { useTheme } from './theme/ThemeContext';
 import { useEmissionModal } from './modals/EmissionModalContext';
+import { useAuth } from './auth/AuthContext';
+import { KeyRound, User } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { openEmissionModal } = useEmissionModal();
+  const { user, setShowPasswordChangeModal } = useAuth();
 
   return (
     <header className="h-14 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-6 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm transition-colors">
@@ -60,8 +63,33 @@ export const Header: React.FC = () => {
           <span>Emitir Nota</span>
         </button>
 
-        {/* Settings */}
-        <div className="flex items-center pl-2 border-l border-slate-200 dark:border-slate-800">
+        {/* User Profile & Password Change Pill */}
+        <div className="flex items-center pl-2 border-l border-slate-200 dark:border-slate-800 gap-2">
+          <button
+            onClick={() => setShowPasswordChangeModal(true)}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors text-left"
+            title="Clique para alterar sua senha ou gerenciar perfil"
+          >
+            <div className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs font-bold shrink-0">
+              {user?.name?.[0] || 'A'}
+            </div>
+            <div className="hidden sm:block text-left">
+              <span className="block text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                {user?.name || 'Abner Teles'}
+              </span>
+              <span className="block text-[9.5px] text-teal-600 dark:text-teal-400 font-medium leading-none">
+                Admin IT2A
+              </span>
+            </div>
+            {user?.mustChangePassword && (
+              <span className="flex items-center gap-0.5 text-[9px] bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30 px-1 py-0.5 rounded font-bold ml-1 animate-pulse">
+                <KeyRound className="w-2.5 h-2.5" />
+                Trocar Senha
+              </span>
+            )}
+          </button>
+
+          {/* Settings */}
           <Link
             href="/settings"
             title="Configurações Fiscais"

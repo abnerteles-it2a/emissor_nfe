@@ -24,6 +24,8 @@ model Tenant {
   apiKeys        ApiKey[]
   fiscalDocs     FiscalDocument[]
   auditLogs      AuditLog[]
+  memberships    TenantMembership[]
+  subscription   Subscription?
 }
 
 // ── Establishment (filial/local emissor) ──────────────────────
@@ -261,3 +263,107 @@ enum EventStatus {
   REJECTED
   FAILED
 }
+
+// ── User (Identidade / IAM) ──────────────────────────────────
+model User {
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  name               String
+  passwordHash       String
+  phone              String?
+  avatarUrl          String?
+  isActive           Boolean            @default(true)
+  mustChangePassword Boolean            @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  memberships        TenantMembership[]
+  sessions           UserSession[]
+}
+
+// ── TenantMembership (Multi-Empresa / Contador) ───────────────
+model TenantMembership {
+  id          String         @id @default(uuid())
+  userId      String
+  tenantId    String
+  role        MembershipRole @default(OPERATOR)
+  isDefault   Boolean        @default(false)
+  permissions Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+}
+
+// ── UserSession (Sessões / Refresh Tokens) ─────────────────────
+model UserSession {
+  id           String    @id @default(uuid())
+  userId       String
+  refreshToken String    @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ── Plan (Planos SaaS & Quotas) ────────────────────────────────
+model Plan {
+  id                String         @id @default(uuid())
+  name              String         // "Starter", "Pro", "Contador Multi-Empresas"
+  slug              String         @unique
+  description       String?
+  monthlyDocLimit   Int            // Limite de notas por mês
+  maxEstablishments Int            @default(1)
+  maxTenants        Int            @default(1)
+  priceCents        Int            @default(0)
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  subscriptions     Subscription[]
+}
+
+// ── Subscription (Assinatura do Tenant) ────────────────────────
+model Subscription {
+  id                   String             @id @default(uuid())
+  tenantId             String             @unique
+  planId               String
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime           @default(now())
+  currentPeriodEnd     DateTime
+  docsIssuedThisPeriod Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan                 Plan               @relation(fields: [planId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  ACCOUNTANT
+  OPERATOR
+  VIEWER
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+

@@ -6,8 +6,14 @@ import { documentPayloadSchema, type DocumentPayload } from './schemas.js';
 import { enqueueIssue } from './queue.js';
 import { prisma } from '@fiscal/database';
 import { FiscalAiGateway } from '@fiscal/ai-gateway';
+import { verifyAccessToken } from '@fiscal/auth';
+import { bootstrapDatabase } from './bootstrap-db.js';
+import { registerAuthAndIamRoutes } from './auth-routes.js';
 
 const build = async () => {
+  // Inicializa DDL de IAM e Seed do Administrador Mestre da IT2A
+  await bootstrapDatabase();
+
   const app = Fastify({
     logger: {
       transport: {
@@ -35,13 +41,49 @@ const build = async () => {
       return reply.code(204).send();
     }
 
-    if (req.url === '/health' || req.url === '/metrics' || req.url === '/ping' || req.url.startsWith('/v1/fiscal/ai')) return;
+    if (
+      req.url === '/health' ||
+      req.url === '/metrics' ||
+      req.url === '/ping' ||
+      req.url.startsWith('/v1/auth') ||
+      req.url.startsWith('/v1/fiscal/ai') ||
+      req.url.startsWith('/v1/iam') ||
+      req.url.startsWith('/v1/subscription')
+    ) {
+      return;
+    }
+
+    // Se o usuário está autenticado com token JWT, valida isolamento multi-empresa
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const payload = verifyAccessToken(authHeader.substring(7));
+      if (payload) {
+        const targetTenant = (req.headers['x-tenant-id'] as string) || payload.activeTenantId;
+        const membership = await prisma.tenantMembership.findUnique({
+          where: {
+            userId_tenantId: {
+              userId: payload.userId,
+              tenantId: targetTenant,
+            },
+          },
+        });
+        if (!membership && targetTenant !== 'it2a-default-tenant') {
+          return reply.code(403).send({
+            error: 'FORBIDDEN_TENANT_ACCESS',
+            message: 'Acesso negado: seu usuário não possui vínculo ativo com esta empresa.',
+          });
+        }
+      }
+    }
 
     const tenantId = req.headers['x-tenant-id'];
     if (!tenantId || typeof tenantId !== 'string') {
       return reply.code(400).send({ error: 'TENANT_REQUIRED' });
     }
   });
+
+  // Registra endpoints de IAM, Autenticação e Subscriptions
+  await registerAuthAndIamRoutes(app);
 
   app.get('/ping', async () => ({ pong: true, ts: new Date().toISOString() }));
 
@@ -76,6 +118,18 @@ const build = async () => {
 
     const body = parseResult.data;
 
+    // Validação de cota da assinatura do Tenant
+    const sub = await prisma.subscription.findUnique({
+      where: { tenantId },
+      include: { plan: true },
+    });
+    if (sub && sub.docsIssuedThisPeriod >= sub.plan.monthlyDocLimit) {
+      return reply.code(402).send({
+        error: 'SUBSCRIPTION_LIMIT_EXCEEDED',
+        message: `Limite mensal de ${sub.plan.monthlyDocLimit} notas do plano ${sub.plan.name} atingido. Faça upgrade para continuar emitindo.`,
+      });
+    }
+
     // Cria documento no banco com status RECEIVED
     const doc = await prisma.fiscalDocument.create({
       data: {
@@ -95,6 +149,13 @@ const build = async () => {
         rendererVersion: '1.0.0',
       },
     });
+
+    if (sub) {
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { docsIssuedThisPeriod: { increment: 1 } },
+      }).catch((e) => console.warn('Falha ao incrementar cota da assinatura:', e));
+    }
 
     // Enfileira para processamento pelo worker
     await enqueueIssue({

@@ -22,6 +22,8 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { useEmissionModal, EmissionDocType } from './modals/EmissionModalContext';
+import { TenantSwitcher } from './auth/TenantSwitcher';
+import { SubscriptionBadge } from './auth/SubscriptionBadge';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -70,6 +72,11 @@ export const Sidebar: React.FC = () => {
               IT2A ENTERPRISE
             </span>
           </div>
+        </div>
+
+        {/* Seletor de Empresa / Tenant Switcher para Contadores */}
+        <div className="p-3 pb-1 border-b border-slate-800/80">
+          <TenantSwitcher />
         </div>
 
         {/* Navigation Items */}
@@ -312,8 +319,10 @@ export const Sidebar: React.FC = () => {
         </nav>
       </div>
 
-      {/* Monitoramento Fiscal no Rodapé da Sidebar */}
-      <div className="p-3">
+      {/* Monitoramento Fiscal & Subscriptions no Rodapé da Sidebar */}
+      <div className="p-3 space-y-2">
+        <SubscriptionBadge />
+
         <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs space-y-2.5 shadow-sm">
           <div className="flex items-center justify-between text-slate-400">
             <span className="flex items-center gap-1.5 font-medium text-slate-300 text-[11px]">

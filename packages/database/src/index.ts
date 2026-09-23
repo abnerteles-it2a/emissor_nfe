@@ -15,6 +15,14 @@ export type {
   AttemptStatus,
   EventType,
   EventStatus,
+  User,
+  TenantMembership,
+  UserSession,
+  Plan,
+  Subscription,
+  MembershipRole,
+  SubscriptionStatus,
 } from '@prisma/client';
 export { prisma } from './client.js';
 export { getNextNumber } from './number-control.js';
+

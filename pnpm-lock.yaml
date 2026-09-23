@@ -41,6 +41,9 @@ importers:
       '@fiscal/ai-gateway':
         specifier: workspace:*
         version: link:../../packages/ai-gateway
+      '@fiscal/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@fiscal/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -167,6 +170,15 @@ importers:
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.20.1)
+
+  packages/auth:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.3.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
 
   packages/crypto:
     dependencies:

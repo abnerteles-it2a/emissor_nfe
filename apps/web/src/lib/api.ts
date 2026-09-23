@@ -51,15 +51,54 @@ export interface IssuePayloadInput {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.nfe.it2a.com';
 
+export function getStoredAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('it2a_access_token');
+}
+
+export function getStoredTenantId(): string {
+  if (typeof window === 'undefined') return 'it2a-default-tenant';
+  return localStorage.getItem('it2a_active_tenant_id') || 'it2a-default-tenant';
+}
+
+export function setStoredTenantId(tenantId: string) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('it2a_active_tenant_id', tenantId);
+  }
+}
+
+export function setStoredAuth(token: string, tenantId: string) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('it2a_access_token', token);
+    localStorage.setItem('it2a_active_tenant_id', tenantId);
+  }
+}
+
+export function clearStoredAuth() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('it2a_access_token');
+    localStorage.removeItem('it2a_active_tenant_id');
+  }
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'x-tenant-id': getStoredTenantId(),
+  };
+  const token = getStoredAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 /**
  * Consulta a lista oficial de documentos fiscais gravados no PostgreSQL
  */
 export async function fetchFiscalDocuments(): Promise<FiscalDocumentSummary[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/v1/fiscal/documents`, {
-      headers: {
-        'x-tenant-id': 'it2a-default-tenant',
-      },
+      headers: getAuthHeaders(),
       cache: 'no-store',
     });
 
@@ -126,7 +165,7 @@ export async function issueFiscalDocument(input: IssuePayloadInput): Promise<Fis
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-tenant-id': 'it2a-default-tenant',
+      ...getAuthHeaders(),
       'idempotency-key': idempotencyKey,
     },
     body: JSON.stringify(body),
@@ -145,9 +184,7 @@ export async function issueFiscalDocument(input: IssuePayloadInput): Promise<Fis
  */
 export async function getFiscalDocument(id: string): Promise<FiscalDocumentSummary> {
   const res = await fetch(`${API_BASE_URL}/v1/fiscal/documents/${id}`, {
-    headers: {
-      'x-tenant-id': 'it2a-default-tenant',
-    },
+    headers: getAuthHeaders(),
     cache: 'no-store',
   });
 
@@ -184,9 +221,7 @@ export async function pollFiscalDocument(
  */
 export async function getFiscalDocumentXml(id: string): Promise<string> {
   const res = await fetch(`${API_BASE_URL}/v1/fiscal/documents/${id}/xml`, {
-    headers: {
-      'x-tenant-id': 'it2a-default-tenant',
-    },
+    headers: getAuthHeaders(),
   });
 
   if (!res.ok) {
@@ -195,4 +230,96 @@ export async function getFiscalDocumentXml(id: string): Promise<string> {
 
   return res.text();
 }
+
+// ── Auth & IAM Endpoints ─────────────────────────────────────
+
+export async function loginUserApi(email: string, password: string) {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.error || 'Falha ao realizar login');
+  }
+  return data;
+}
+
+export async function changePasswordApi(newPassword: string, currentPassword?: string) {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ newPassword, currentPassword }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.error || 'Falha ao alterar senha');
+  }
+  return data;
+}
+
+export async function fetchMeApi() {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/me`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Não autenticado');
+  return res.json();
+}
+
+export async function fetchMyTenantsApi() {
+  const res = await fetch(`${API_BASE_URL}/v1/iam/my-tenants`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Falha ao listar empresas do usuário');
+  return res.json();
+}
+
+export async function switchTenantApi(targetTenantId: string) {
+  const res = await fetch(`${API_BASE_URL}/v1/iam/switch-tenant`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ targetTenantId }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.error || 'Falha ao alternar empresa');
+  }
+  return data;
+}
+
+export async function fetchSubscriptionUsageApi() {
+  const res = await fetch(`${API_BASE_URL}/v1/subscription/usage`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function createTenantApi(name: string, document: string, role = 'ACCOUNTANT') {
+  const res = await fetch(`${API_BASE_URL}/v1/iam/tenants`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ name, document, role }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.error || 'Falha ao cadastrar empresa');
+  }
+  return data;
+}
+
 
