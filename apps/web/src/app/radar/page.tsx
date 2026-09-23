@@ -88,14 +88,14 @@ export default function RadarPage() {
   return (
     <div className="space-y-8 max-w-6xl">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-semibold text-brand-400 uppercase tracking-wider">Radar DF-e de Entradas</span>
             <span className="text-slate-600">•</span>
             <span className="text-xs text-slate-400">WebService DistDFe SEFAZ Nacional</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Recepção de Notas de Fornecedores</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Recepção de Notas de Fornecedores</h1>
           <p className="text-sm text-slate-400 mt-1">
             Captura contínua de todos os documentos fiscais emitidos contra o CNPJ da IT2A com registro de Manifestação do Destinatário.
           </p>
@@ -114,21 +114,21 @@ export default function RadarPage() {
 
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <span className="text-xs text-slate-400 uppercase tracking-wider block mb-1">Notas Recebidas (Mês)</span>
-          <span className="text-2xl font-bold text-white">{incomings.length} documentos</span>
+          <span className="text-2xl font-bold text-slate-900 dark:text-white">{incomings.length} documentos</span>
           <span className="text-xs text-emerald-400 block mt-1">100% capturadas via NSU</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <span className="text-xs text-slate-400 uppercase tracking-wider block mb-1">Total Faturado Contra CNPJ</span>
-          <span className="text-2xl font-bold text-white">
+          <span className="text-2xl font-bold text-slate-900 dark:text-white">
             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalReceived)}
           </span>
           <span className="text-xs text-slate-400 block mt-1">Compras & Serviços tomados</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <span className="text-xs text-slate-400 uppercase tracking-wider block mb-1">Pendentes de Manifestação</span>
           <span className="text-2xl font-bold text-amber-400">{pendingCount} notas</span>
           <span className="text-xs text-amber-400/80 block mt-1">Aguardando Ciência / Confirmação</span>
@@ -144,7 +144,7 @@ export default function RadarPage() {
             placeholder="Buscar por fornecedor, CNPJ ou chave..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+            className="w-full bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
           />
         </div>
 
@@ -152,7 +152,7 @@ export default function RadarPage() {
           <button
             onClick={() => setFilterManifest('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filterManifest === 'ALL' ? 'bg-slate-800 text-white border border-slate-700' : 'text-slate-400 hover:text-white'
+              filterManifest === 'ALL' ? 'bg-slate-100 dark:bg-slate-800 text-white border border-slate-700' : 'text-slate-400 hover:text-white'
             }`}
           >
             Todas
@@ -177,10 +177,10 @@ export default function RadarPage() {
       </div>
 
       {/* Tabela de Notas de Entrada */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950/60 text-xs uppercase font-medium text-slate-400 border-b border-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-900/60 text-xs uppercase font-medium text-slate-400 border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="px-6 py-3">NSU / Data</th>
                 <th className="px-6 py-3">Fornecedor (Emitente)</th>
@@ -189,9 +189,9 @@ export default function RadarPage() {
                 <th className="px-6 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60">
               {filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-800/40 transition-colors text-xs">
+                <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors text-xs">
                   <td className="px-6 py-4">
                     <span className="font-mono text-slate-400 block font-bold">NSU #{item.nsu.slice(-6)}</span>
                     <span className="text-slate-500 text-[11px]">{item.issueDate}</span>
@@ -201,7 +201,7 @@ export default function RadarPage() {
                     <div className="flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
                       <div>
-                        <span className="font-semibold text-white block">{item.emitName}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white block">{item.emitName}</span>
                         <span className="text-slate-500">{item.emitCnpj} • {item.emitUf}</span>
                       </div>
                     </div>
@@ -246,7 +246,7 @@ export default function RadarPage() {
                       )}
                       <button
                         type="button"
-                        className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                        className="p-1.5 rounded hover:bg-slate-100 dark:bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-white transition-colors"
                         title="Baixar XML do Fornecedor"
                       >
                         <Download className="w-4 h-4" />

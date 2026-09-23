@@ -28,13 +28,13 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 max-w-5xl">
       {/* Header */}
-      <div className="pb-6 border-b border-slate-800">
+      <div className="pb-6 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs font-semibold text-brand-400 uppercase tracking-wider">Configuração Central</span>
           <span className="text-slate-600">•</span>
           <span className="text-xs text-slate-400">Dados do Emitente & Certificado</span>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Configurações & Certificados Digitais</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Configurações & Certificados Digitais</h1>
         <p className="text-sm text-slate-400 mt-1">
           Parametrização cadastral da empresa emitente, credenciais de assinatura A1 ICP-Brasil e chaveamento de ambiente SEFAZ.
         </p>
@@ -48,12 +48,12 @@ export default function SettingsPage() {
       )}
 
       {/* 1. Dados do Emitente */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+      <div className="bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Building className="w-5 h-5 text-brand-400" />
             <div>
-              <h2 className="text-base font-semibold text-white">1. Cadastro da Empresa Emitente</h2>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">1. Cadastro da Empresa Emitente</h2>
               <p className="text-xs text-slate-400">Informações tributárias oficiais cadastradas na Receita e SEFAZ</p>
             </div>
           </div>
@@ -69,7 +69,7 @@ export default function SettingsPage() {
               type="text"
               readOnly
               value="IT2A TECNOLOGIA LTDA"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 font-medium cursor-not-allowed"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-200 font-medium cursor-not-allowed"
             />
           </div>
           <div>
@@ -78,7 +78,7 @@ export default function SettingsPage() {
               type="text"
               readOnly
               value="65.280.654/0001-61"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 font-medium cursor-not-allowed"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-200 font-medium cursor-not-allowed"
             />
           </div>
           <div>
@@ -87,7 +87,7 @@ export default function SettingsPage() {
               type="text"
               readOnly
               value="01965530"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 font-medium cursor-not-allowed"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-200 font-medium cursor-not-allowed"
             />
           </div>
           <div>
@@ -96,19 +96,19 @@ export default function SettingsPage() {
               type="text"
               readOnly
               value="02935 — Licenciamento e cessão de software (ISS: 2,9%)"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 font-medium cursor-not-allowed"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-200 font-medium cursor-not-allowed"
             />
           </div>
         </div>
       </div>
 
       {/* 2. Certificado Digital A1 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+      <div className="bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <KeyRound className="w-5 h-5 text-it2a-cyan" />
             <div>
-              <h2 className="text-base font-semibold text-white">2. Certificado Digital A1 (ICP-Brasil)</h2>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">2. Certificado Digital A1 (ICP-Brasil)</h2>
               <p className="text-xs text-slate-400">Certificado utilizado pelo Worker ECS para assinatura das NF-e e NFS-e</p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Detalhes do Certificado Ativo */}
-        <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl text-xs space-y-2 text-slate-300">
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-2 text-slate-300">
           <div className="flex justify-between">
             <span className="text-slate-500">Autoridade Certificadora (Emissor):</span>
             <span className="font-medium text-slate-300">AC SyngularID Multipla v5 (ICP-Brasil)</span>
@@ -142,7 +142,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Upload de Novo Certificado */}
-        <div className="border-2 border-dashed border-slate-800 rounded-xl p-6 text-center hover:border-brand-500/50 transition-colors">
+        <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center hover:border-brand-500/50 transition-colors">
           <UploadCloud className="w-8 h-8 text-slate-500 mx-auto mb-2" />
           <p className="text-xs font-semibold text-slate-300">Carregar novo arquivo de Certificado Digital (.pfx / .p12)</p>
           <p className="text-[11px] text-slate-500 mt-1">Arraste o arquivo ou clique para selecionar</p>
@@ -152,11 +152,11 @@ export default function SettingsPage() {
               placeholder="Senha do arquivo .pfx..."
               value={certPassword}
               onChange={(e) => setCertPassword(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 flex-1"
+              className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 flex-1"
             />
             <button
               type="button"
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-700 transition-colors"
             >
               Validar
             </button>
@@ -165,11 +165,11 @@ export default function SettingsPage() {
       </div>
 
       {/* 3. Séries e Ambientes da SEFAZ */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+      <div className="bg-white dark:bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5">
         <div className="flex items-center gap-3">
           <Server className="w-5 h-5 text-amber-400" />
           <div>
-            <h2 className="text-base font-semibold text-white">3. Controle de Séries & Ambiente de Transmissão</h2>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">3. Controle de Séries & Ambiente de Transmissão</h2>
             <p className="text-xs text-slate-400">Defina os parâmetros de numeração para evitar duplicidade de notas</p>
           </div>
         </div>
@@ -180,7 +180,7 @@ export default function SettingsPage() {
             <select
               value={selectedEnv}
               onChange={(e: any) => setSelectedEnv(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 focus:border-brand-500 rounded-lg px-3 py-2 text-white font-medium focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-brand-500 rounded-lg px-3 py-2 text-white font-medium focus:outline-none"
             >
               <option value="HOMOLOGATION">Homologação (Testes sem valor fiscal)</option>
               <option value="PRODUCTION">Produção (Validade jurídica e fiscal)</option>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
             <input
               type="number"
               defaultValue={1}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-white font-medium"
             />
           </div>
           <div>
@@ -199,12 +199,12 @@ export default function SettingsPage() {
             <input
               type="number"
               defaultValue={101}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-white font-medium"
             />
           </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t border-slate-800">
+        <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
           <button
             type="button"
             onClick={handleSaveSettings}

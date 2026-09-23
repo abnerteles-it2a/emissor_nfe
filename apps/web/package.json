@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fiscal/ai-gateway": "workspace:*",
     "@fiscal/fiscal-core": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",

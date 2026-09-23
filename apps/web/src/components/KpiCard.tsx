@@ -7,18 +7,45 @@ export interface KpiCardProps {
   subtext?: string;
   subtextColor?: string;
   isPrivacyMode?: boolean;
-  variant?: 'standard' | 'primary';
-  density?: 'default' | 'compact';
-  color?: 'blue' | 'green' | 'rose' | 'amber' | 'indigo' | 'slate' | string;
+  color?: 'teal' | 'blue' | 'emerald' | 'rose' | 'amber' | 'indigo' | 'slate' | string;
 }
 
-const colorMap: Record<string, string> = {
-  blue: '#3B82F6',
-  green: '#10B981',
-  rose: '#F43F5E',
-  amber: '#F59E0B',
-  indigo: '#6366F1',
-  slate: '#64748B',
+const colorBadgeMap: Record<string, { bg: string; text: string; border: string }> = {
+  teal: {
+    bg: 'bg-teal-50 dark:bg-teal-950/40',
+    text: 'text-teal-600 dark:text-teal-400',
+    border: 'border-teal-200 dark:border-teal-800/60',
+  },
+  blue: {
+    bg: 'bg-sky-50 dark:bg-sky-950/40',
+    text: 'text-sky-600 dark:text-sky-400',
+    border: 'border-sky-200 dark:border-sky-800/60',
+  },
+  emerald: {
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    border: 'border-emerald-200 dark:border-emerald-800/60',
+  },
+  rose: {
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    text: 'text-rose-600 dark:text-rose-400',
+    border: 'border-rose-200 dark:border-rose-800/60',
+  },
+  amber: {
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-600 dark:text-amber-400',
+    border: 'border-amber-200 dark:border-amber-800/60',
+  },
+  indigo: {
+    bg: 'bg-indigo-50 dark:bg-indigo-950/40',
+    text: 'text-indigo-600 dark:text-indigo-400',
+    border: 'border-indigo-200 dark:border-indigo-800/60',
+  },
+  slate: {
+    bg: 'bg-slate-50 dark:bg-slate-800',
+    text: 'text-slate-600 dark:text-slate-400',
+    border: 'border-slate-200 dark:border-slate-700',
+  },
 };
 
 export const KpiCard: React.FC<KpiCardProps> = ({
@@ -28,74 +55,43 @@ export const KpiCard: React.FC<KpiCardProps> = ({
   subtext,
   subtextColor,
   isPrivacyMode = false,
-  variant = 'standard',
-  density = 'default',
-  color = 'slate',
+  color = 'teal',
 }) => {
-  const isCompact = density === 'compact';
-  const isPrimary = variant === 'primary';
-  const accentColor =
-    colorMap[color as string] ||
-    (typeof color === 'string' && color.startsWith('#') ? color : colorMap.slate);
-
-  if (isPrimary) {
-    return (
-      <div className="KpiCard flex flex-col p-4 rounded-xl bg-[#0D9488] text-white shadow-lg shadow-[#0D9488]/20 border border-teal-500/30 hover:border-teal-400/50 hover:shadow-xl transition-all duration-200 group min-h-[6.5rem]">
-        <div className="w-9 h-9 flex items-center justify-center rounded-lg mb-3 bg-white/20 text-white transition-transform duration-200 group-hover:scale-105 shadow-sm">
-          {React.isValidElement(icon)
-            ? React.cloneElement(icon as React.ReactElement<any>, { className: 'w-4.5 h-4.5' })
-            : icon}
-        </div>
-        <div className="flex-1 space-y-0.5">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.1em] text-white/90 truncate">
-            {title}
-          </h3>
-          <p className="text-xl font-black leading-tight truncate tracking-tight text-white tabular-nums">
-            {isPrivacyMode ? '••••••' : value}
-          </p>
-        </div>
-        {subtext && (
-          <div className="mt-2 pt-2 border-t border-white/20">
-            <p className="text-[9px] font-black tracking-widest uppercase opacity-90 truncate text-white">
-              {subtext}
-            </p>
-          </div>
-        )}
-      </div>
-    );
-  }
+  const badgeStyle = colorBadgeMap[color] || colorBadgeMap.teal;
 
   return (
     <div
       role="group"
       aria-label={title}
-      className={`KpiCard flex justify-between items-center p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 hover:shadow-lg transition-all duration-200 group min-h-[5.5rem] sm:min-h-[6.5rem]`}
-      style={{ borderLeft: `5px solid ${accentColor}` }}
+      className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200 flex flex-col justify-between min-h-[6.5rem] group"
     >
-      <div className="flex flex-col gap-0.5 min-w-0 pr-2">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 truncate">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
           {title}
-        </h3>
-        <p className="text-lg sm:text-xl font-bold text-white tracking-tight tabular-nums truncate">
+        </span>
+        <div
+          className={`w-8 h-8 rounded-xl flex items-center justify-center border shrink-0 transition-transform duration-200 group-hover:scale-105 ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}
+        >
+          {React.isValidElement(icon)
+            ? React.cloneElement(icon as React.ReactElement<any>, { className: 'w-4 h-4' })
+            : icon}
+        </div>
+      </div>
+
+      <div className="space-y-0.5">
+        <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight tabular-nums truncate">
           {isPrivacyMode ? '••••••' : value}
         </p>
+
         {subtext && (
-          <span
-            className={`text-[9px] font-black uppercase tracking-widest truncate ${
-              subtextColor || 'text-slate-400'
+          <p
+            className={`text-xs font-medium truncate ${
+              subtextColor || 'text-slate-500 dark:text-slate-400'
             }`}
           >
             {subtext}
-          </span>
+          </p>
         )}
-      </div>
-
-      <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center text-slate-400 border border-slate-700/60 shadow-inner shrink-0">
-        <div className="scale-110 opacity-70 group-hover:scale-125 group-hover:opacity-100 transition-all text-slate-300">
-          {React.isValidElement(icon)
-            ? React.cloneElement(icon as React.ReactElement<any>, { className: 'w-5 h-5' })
-            : icon}
-        </div>
       </div>
     </div>
   );

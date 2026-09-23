@@ -9,6 +9,7 @@ applications:
             - corepack prepare pnpm@9.0.0 --activate
             - cd ../..
             - pnpm install --frozen-lockfile --prod=false
+            - pnpm --filter @fiscal/ai-gateway build
             - cd apps/web
         build:
           commands:

@@ -5,6 +5,7 @@ import fastifyHealthcheck from 'fastify-healthcheck';
 import { documentPayloadSchema, type DocumentPayload } from './schemas.js';
 import { enqueueIssue } from './queue.js';
 import { prisma } from '@fiscal/database';
+import { FiscalAiGateway } from '@fiscal/ai-gateway';
 
 const build = async () => {
   const app = Fastify({
@@ -34,7 +35,7 @@ const build = async () => {
       return reply.code(204).send();
     }
 
-    if (req.url === '/health' || req.url === '/metrics' || req.url === '/ping') return;
+    if (req.url === '/health' || req.url === '/metrics' || req.url === '/ping' || req.url.startsWith('/v1/fiscal/ai')) return;
 
     const tenantId = req.headers['x-tenant-id'];
     if (!tenantId || typeof tenantId !== 'string') {
@@ -156,6 +157,49 @@ const build = async () => {
     });
 
     return reply.send({ data: docs, total: docs.length });
+  });
+
+  // ── AI Fiscal Copilot Routes ────────────────────────────────
+  const aiGateway = new FiscalAiGateway();
+
+  app.post('/v1/fiscal/ai/classify', async (req, reply) => {
+    const body = req.body as any;
+    if (!body?.description) {
+      return reply.code(400).send({ error: 'DESCRIPTION_REQUIRED' });
+    }
+    const result = await aiGateway.classify({
+      description: body.description,
+      regime: body.regime,
+      uf: body.uf,
+      operationType: body.operationType,
+    });
+    return reply.send(result);
+  });
+
+  app.post('/v1/fiscal/ai/explain-error', async (req, reply) => {
+    const body = req.body as any;
+    if (!body?.cStat && !body?.sefazMessage) {
+      return reply.code(400).send({ error: 'CSTAT_OR_MESSAGE_REQUIRED' });
+    }
+    const result = await aiGateway.explainRejection({
+      cStat: body.cStat,
+      sefazMessage: body.sefazMessage,
+      documentType: body.documentType,
+      rawPayload: body.rawPayload,
+    });
+    return reply.send(result);
+  });
+
+  app.post('/v1/fiscal/ai/simulate-tax', async (req, reply) => {
+    const body = req.body as any;
+    if (!Array.isArray(body?.items)) {
+      return reply.code(400).send({ error: 'ITEMS_ARRAY_REQUIRED' });
+    }
+    const result = await aiGateway.simulateReforma({
+      items: body.items,
+      regime: body.regime,
+    });
+    return reply.send(result);
   });
 
   return app;

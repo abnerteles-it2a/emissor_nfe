@@ -3,105 +3,135 @@
 @tailwind utilities;
 
 @layer base {
+  /* Modo Claro - Padrão Ergonômico Equilibrado (Anti-Ofuscamento) */
   :root {
-    --color-brand: #0D9488;
-    --color-omie-midnight: #001e2c;
-    --color-omie-sidebar: #020617;
-    --color-omie-blue: #00B4D8;
-    --color-slate-950: #020617;
+    --bg-canvas: #F4F6F9;       /* Fundo fosco neutro suave, sem cansar a vista */
+    --bg-surface: #FFFFFF;      /* Superfície dos cards e modais */
+    --bg-surface-hover: #F8FAFC;
+    --border-subtle: #E2E8F0;    /* Bordas leves de separação */
+    --border-medium: #CBD5E1;
+    --text-primary: #1E293B;     /* Grafite escuro elegante (evita preto chapado estourado) */
+    --text-secondary: #475569;   /* Cinza intermediário para subtítulos */
+    --text-muted: #64748B;       /* Textos auxiliares e metadados */
+    --color-brand: #0D9488;      /* Teal Institucional IT2A */
+    --color-brand-hover: #0F766E;
+    --color-brand-light: rgba(13, 148, 136, 0.08);
+    --sidebar-bg: #0F172A;       /* Sidebar contrastada executiva */
+    --sidebar-border: #1E293B;
+  }
+
+  /* Modo Escuro - Equilibrado e Sóbrio (sem preto absoluto nem texto branco estourado) */
+  .dark {
+    --bg-canvas: #0F172A;       /* Fundo Slate Profundo (não preto puro) */
+    --bg-surface: #1E293B;      /* Superfície dos cards */
+    --bg-surface-hover: #27354A;
+    --border-subtle: #334155;    /* Bordas suaves */
+    --border-medium: #475569;
+    --text-primary: #F8FAFC;     /* Branco suave com leve temperatura fria */
+    --text-secondary: #CBD5E1;   /* Cinza claro para leitura prolongada */
+    --text-muted: #94A3B8;
+    --color-brand: #14B8A6;
+    --color-brand-hover: #2DD4BF;
+    --color-brand-light: rgba(20, 184, 166, 0.15);
+    --sidebar-bg: #0B1120;
+    --sidebar-border: #1E293B;
   }
 
   body {
-    background-color: #020617;
-    color: #f8fafc;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
-/* Sidebar sólida e elegante com alto contraste */
-.app-sidebar {
-  background-color: #020617;
-  border-right: 1px solid rgba(51, 65, 85, 0.4);
-}
-
-/* Cards com fundo sólido escuro corporativo (sem interferência de imagens) */
-.omie-card {
-  background-color: #0b1329;
-  border: 1px solid rgba(51, 65, 85, 0.5);
+/* Card Sóbrio e Equilibrado */
+.it2a-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-/* Typography scale - Enterprise Focused */
+.it2a-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Typography Scale */
 .text-label-caps {
-  @apply text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400;
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
 }
 
-/* Tabelas Fiscais de Alta Legibilidade */
-.omie-table-container {
-  background-color: #0b1329;
-  border: 1px solid rgba(51, 65, 85, 0.5);
+/* Tabela Fiscal Ergonômica */
+.it2a-table-container {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.75rem;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
-.omie-table {
+.it2a-table {
   width: 100%;
   text-align: left;
   border-collapse: collapse;
 }
 
-.omie-table thead tr {
-  background-color: #060c1c;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+.it2a-table thead tr {
+  background-color: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.omie-table th {
+.it2a-table th {
   padding: 0.75rem 1rem;
-  font-size: 10px;
-  font-weight: 900;
-  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
-.omie-table tbody tr {
-  border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+.it2a-table tbody tr {
+  border-bottom: 1px solid var(--border-subtle);
   transition: background-color 0.15s ease;
 }
 
-.omie-table tbody tr:hover {
-  background-color: rgba(30, 41, 59, 0.5);
+.it2a-table tbody tr:hover {
+  background-color: var(--bg-surface-hover);
 }
 
-.omie-table td {
+.it2a-table td {
   padding: 0.875rem 1rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #e2e8f0;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
-/* Custom Scrollbar */
+/* Scrollbar Customizada */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: var(--bg-canvas);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--border-medium);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0d9488;
+  background: var(--color-brand);
 }
 
 @keyframes fadeIn {
@@ -110,5 +140,5 @@
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.25s ease-out forwards;
+  animation: fadeIn 0.2s ease-out forwards;
 }

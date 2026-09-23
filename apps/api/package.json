@@ -9,6 +9,7 @@
     "lint": "eslint . --ext .ts"
   },
   "dependencies": {
+    "@fiscal/ai-gateway": "workspace:*",
     "@fiscal/database": "workspace:*",
     "@fiscal/fiscal-core": "workspace:*",
     "fastify": "^4.29.1",
