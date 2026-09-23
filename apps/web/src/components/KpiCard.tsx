@@ -69,7 +69,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
     <div
       role="group"
       aria-label={title}
-      className={`KpiCard flex justify-between items-center p-3.5 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 hover:shadow-lg transition-all duration-200 group min-h-[5.5rem] sm:min-h-[6.5rem]`}
+      className={`KpiCard flex justify-between items-center p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 hover:shadow-lg transition-all duration-200 group min-h-[5.5rem] sm:min-h-[6.5rem]`}
       style={{ borderLeft: `5px solid ${accentColor}` }}
     >
       <div className="flex flex-col gap-0.5 min-w-0 pr-2">

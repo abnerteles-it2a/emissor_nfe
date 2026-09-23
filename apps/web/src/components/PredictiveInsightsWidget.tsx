@@ -11,7 +11,7 @@ export const PredictiveInsightsWidget: React.FC = () => {
   if (dismissed) return null;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-slate-900/90 border border-teal-500/25 p-4 sm:p-5 shadow-xl shadow-slate-950/40 animate-fadeIn space-y-3 backdrop-blur-md">
+    <div className="relative overflow-hidden rounded-2xl bg-slate-900 border border-teal-500/25 p-4 sm:p-5 shadow-xl shadow-slate-950/40 animate-fadeIn space-y-3">
       {/* Background ambient lighting */}
       <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
 
