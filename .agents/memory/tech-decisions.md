@@ -81,5 +81,14 @@ updated: 2026-09-20
 - Component metadata uses SemVer while the toolkit release keeps CalVer
 - `manifest.json` e `manifest.lock.json` devem permanecer sincronizados
 - Idempotência via banco (Prisma) — não mais via arquivo JSONL
-- NumberControl com increment atômico no Prisma (sem race condition)
 - tpAmb=2 hardcoded em xml-builder para segurança — nunca muda sem config explícita
+
+## Autenticação, IAM & Ecossistema IT2A
+- **Produto Autônomo & Centralizador**: O Emissor Fiscal SaaS funciona tanto com interface própria (Next.js 14) quanto como API REST/mTLS consumida pelo **Gestor Financeiro**, **Gestor Veterinário** e ERPs parceiros.
+- **Modelo de IAM**:
+  - `User`: Identidade única (e-mail, senha com PBKDF2/SHA-512, flag `mustChangePassword`).
+  - `Tenant`: Empresa cliente isolada por CNPJ/CPF com assinatura de quotas (ex: 1.000 ou 100.000 notas/mês).
+  - `TenantMembership`: Papéis granulares (`OWNER`, `ADMIN`, `ACCOUNTANT`, `OPERATOR`, `VIEWER`). Contadores podem alternar instantaneamente entre empresas clientes via `POST /v1/iam/switch-tenant`.
+- **Tela de Acesso (LoginGate)**: Split screen com apresentação institucional dos 4 pilares fiscais, fluxos de login, auto-cadastro de empresa (`/signup`), recuperação de senha (`/forgot-password` e `/reset-password`) e troca obrigatória de senha temporária.
+- **Painel de Equipe (IAM)**: Integrado em `/settings?tab=users`, permitindo aos administradores convidar membros, definir permissões e resetar credenciais temporárias.
+

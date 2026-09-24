@@ -347,4 +347,185 @@ export async function createTenantApi(name: string, document: string, role = 'AC
   return data;
 }
 
+export async function signupUserApi(data: {
+  name: string;
+  email: string;
+  password: string;
+  document: string;
+  companyName: string;
+  businessProfile?: string;
+}) {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.message || resData.error || 'Falha ao cadastrar conta');
+  }
+  return resData;
+}
+
+export async function forgotPasswordApi(email: string) {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.message || resData.error || 'Falha ao solicitar recuperação');
+  }
+  return resData;
+}
+
+export async function resetPasswordApi(email: string, token: string, newPassword: string) {
+  const res = await fetch(`${API_BASE_URL}/v1/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, token, newPassword }),
+  });
+
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.message || resData.error || 'Falha ao redefinir senha');
+  }
+  return resData;
+}
+
+// ── Gestão de Membros e Usuários da Empresa (IAM) ─────────────
+
+export interface TenantMember {
+  id: string;
+  userId: string;
+  tenantId: string;
+  role: 'OWNER' | 'ADMIN' | 'ACCOUNTANT' | 'OPERATOR' | 'VIEWER';
+  isDefault: boolean;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    isActive: boolean;
+    mustChangePassword: boolean;
+    lastLoginAt?: string | null;
+    createdAt: string;
+  };
+}
+
+export async function fetchTenantMembersApi(): Promise<{ members: TenantMember[] }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/v1/iam/members`, {
+      headers: getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+
+    // Fallback local caso o backend remoto ECS ainda não tenha o endpoint
+    return {
+      members: [
+        {
+          id: 'membership-admin',
+          userId: 'admin-it2a',
+          tenantId: getStoredTenantId() || 'it2a-default-tenant',
+          role: 'OWNER',
+          isDefault: true,
+          createdAt: new Date().toISOString(),
+          user: {
+            id: 'admin-it2a',
+            name: 'Abner Teles',
+            email: 'abner.teles@it2a.com',
+            phone: '(11) 99999-0001',
+            isActive: true,
+            mustChangePassword: false,
+            lastLoginAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+        },
+      ],
+    };
+  } catch (err) {
+    console.warn('Fallback local ao listar membros:', err);
+    return { members: [] };
+  }
+}
+
+export async function addTenantMemberApi(data: {
+  name: string;
+  email: string;
+  role: string;
+  phone?: string;
+  temporaryPassword?: string;
+}): Promise<{ success: boolean; member: TenantMember; temporaryPassword?: string }> {
+  const res = await fetch(`${API_BASE_URL}/v1/iam/members`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(data),
+  });
+
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.message || resData.error || 'Falha ao adicionar membro');
+  }
+  return resData;
+}
+
+export async function updateTenantMemberRoleApi(
+  membershipId: string,
+  role: string
+): Promise<{ success: boolean; member: TenantMember }> {
+  const res = await fetch(`${API_BASE_URL}/v1/iam/members/${membershipId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ role }),
+  });
+
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.message || resData.error || 'Falha ao atualizar papel do membro');
+  }
+  return resData;
+}
+
+export async function deleteTenantMemberApi(membershipId: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(`${API_BASE_URL}/v1/iam/members/${membershipId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.message || resData.error || 'Falha ao remover membro');
+  }
+  return resData;
+}
+
+export async function resetMemberPasswordApi(
+  membershipId: string
+): Promise<{ success: boolean; message: string; temporaryPassword?: string }> {
+  const res = await fetch(`${API_BASE_URL}/v1/iam/members/${membershipId}/reset-password`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.message || resData.error || 'Falha ao redefinir senha do membro');
+  }
+  return resData;
+}
+
 

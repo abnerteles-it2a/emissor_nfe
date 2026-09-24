@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme/ThemeContext';
 import { AuthProvider } from '@/components/auth/AuthContext';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { LoginGate } from '@/components/auth/LoginGate';
 import { EmissionModalProvider } from '@/components/modals/EmissionModalContext';
 import { EmissionModal } from '@/components/modals/EmissionModal';
 import { Sidebar } from '@/components/Sidebar';
@@ -42,6 +43,9 @@ export default function RootLayout({
 
               {/* Modal de Troca de Senha Obrigatória (Admin/Novo Usuário) */}
               <ChangePasswordModal />
+
+              {/* Tela de Autenticação / Login Gate com Split Screen (Gestor Financeiro) */}
+              <LoginGate />
             </EmissionModalProvider>
           </AuthProvider>
         </ThemeProvider>

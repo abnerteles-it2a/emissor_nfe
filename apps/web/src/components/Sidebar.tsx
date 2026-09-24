@@ -274,6 +274,15 @@ export const Sidebar: React.FC = () => {
                   <Truck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                   <span>Transportadoras</span>
                 </Link>
+
+                <Link
+                  href="/settings?tab=users"
+                  onClick={() => setActiveFlyout(null)}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-xl text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium border-t border-slate-100 dark:border-slate-800 pt-2 mt-1"
+                >
+                  <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>Usuários &amp; Equipe (IAM)</span>
+                </Link>
               </div>
             )}
           </div>

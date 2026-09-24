@@ -7,17 +7,19 @@ import {
   Search,
   Settings,
   Sun,
-  Moon
+  Moon,
+  LogOut,
+  KeyRound,
+  User,
 } from 'lucide-react';
 import { useTheme } from './theme/ThemeContext';
 import { useEmissionModal } from './modals/EmissionModalContext';
 import { useAuth } from './auth/AuthContext';
-import { KeyRound, User } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { openEmissionModal } = useEmissionModal();
-  const { user, setShowPasswordChangeModal } = useAuth();
+  const { user, logout, setShowPasswordChangeModal } = useAuth();
 
   return (
     <header className="h-14 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-6 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm transition-colors">
@@ -97,6 +99,16 @@ export const Header: React.FC = () => {
           >
             <Settings className="w-4 h-4" />
           </Link>
+
+          {/* Sair / Logout */}
+          <button
+            type="button"
+            onClick={logout}
+            title="Encerrar Sessão (Logout)"
+            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

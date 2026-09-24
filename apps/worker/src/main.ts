@@ -231,6 +231,15 @@ async function processJob(msg: IssueJobMessage): Promise<void> {
         rulesVersion: '1.0.0',
       },
     });
+
+    // Atualiza contador de consumo na assinatura do Tenant
+    await prisma.subscription.updateMany({
+      where: { tenantId: msg.tenantId, status: 'ACTIVE' },
+      data: { docsIssuedThisPeriod: { increment: 1 } },
+    }).catch((subErr) => {
+      logger.warn({ tenantId: msg.tenantId, subErr }, 'Could not increment subscription quota');
+    });
+
     logger.info({ id: msg.id, protocol: result.protocol }, 'Document AUTHORIZED');
   } else {
     await prisma.fiscalDocument.update({

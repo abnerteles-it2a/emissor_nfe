@@ -56,9 +56,9 @@ export async function bootstrapDatabase(): Promise<void> {
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "TenantMembership_userId_tenantId_key" UNIQUE ("userId", "tenantId")
       );
-      CREATE INDEX IF NOT EXISTS "TenantMembership_userId_idx" ON "TenantMembership"("userId");
-      CREATE INDEX IF NOT EXISTS "TenantMembership_tenantId_idx" ON "TenantMembership"("tenantId");
     `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "TenantMembership_userId_idx" ON "TenantMembership"("userId");`).catch(() => null);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "TenantMembership_tenantId_idx" ON "TenantMembership"("tenantId");`).catch(() => null);
 
     // 4. Tabela UserSession
     await prisma.$executeRawUnsafe(`
@@ -71,8 +71,8 @@ export async function bootstrapDatabase(): Promise<void> {
         "expiresAt" TIMESTAMP(3) NOT NULL,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE INDEX IF NOT EXISTS "UserSession_userId_idx" ON "UserSession"("userId");
     `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "UserSession_userId_idx" ON "UserSession"("userId");`).catch(() => null);
 
     // 5. Tabela Plan
     await prisma.$executeRawUnsafe(`
@@ -104,9 +104,9 @@ export async function bootstrapDatabase(): Promise<void> {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE INDEX IF NOT EXISTS "Subscription_tenantId_idx" ON "Subscription"("tenantId");
-      CREATE INDEX IF NOT EXISTS "Subscription_status_idx" ON "Subscription"("status");
     `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Subscription_tenantId_idx" ON "Subscription"("tenantId");`).catch(() => null);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Subscription_status_idx" ON "Subscription"("status");`).catch(() => null);
 
     console.log('[Bootstrap] Tabelas verificadas/criadas com sucesso.');
   } catch (err) {

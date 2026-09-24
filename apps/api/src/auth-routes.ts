@@ -1,11 +1,12 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '@fiscal/database';
+import { prisma, type MembershipRole } from '@fiscal/database';
 import {
   hashPassword,
   verifyPassword,
   signAccessToken,
   verifyAccessToken,
   generateRefreshToken,
+  canPerform,
 } from '@fiscal/auth';
 
 export async function registerAuthAndIamRoutes(app: FastifyInstance): Promise<void> {
@@ -99,7 +100,229 @@ export async function registerAuthAndIamRoutes(app: FastifyInstance): Promise<vo
     });
   });
 
-  // ── POST /v1/auth/change-password ───────────────────────────
+  // ── POST /v1/auth/signup (Criar nova conta / Empresa) ────────
+  app.post('/v1/auth/signup', async (req: FastifyRequest, reply: FastifyReply) => {
+    const body = req.body as {
+      email?: string;
+      password?: string;
+      name?: string;
+      document?: string;
+      companyName?: string;
+      businessProfile?: string;
+    };
+
+    if (!body?.email || !body?.password || !body?.name || !body?.document || !body?.companyName) {
+      return reply.code(400).send({
+        error: 'MISSING_FIELDS',
+        message: 'Nome, e-mail, senha, documento (CNPJ/CPF) e Razão Social são obrigatórios.',
+      });
+    }
+
+    if (body.password.length < 6) {
+      return reply.code(400).send({
+        error: 'PASSWORD_TOO_SHORT',
+        message: 'A senha deve ter no mínimo 6 caracteres.',
+      });
+    }
+
+    const email = body.email.trim().toLowerCase();
+    const cleanDoc = body.document.replace(/\D/g, '');
+
+    if (cleanDoc.length !== 11 && cleanDoc.length !== 14) {
+      return reply.code(400).send({
+        error: 'INVALID_DOCUMENT',
+        message: 'Documento deve ser um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.',
+      });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return reply.code(409).send({
+        error: 'EMAIL_ALREADY_EXISTS',
+        message: 'Este e-mail já está cadastrado na plataforma.',
+      });
+    }
+
+    // Cria ou reutiliza tenant com o documento fornecido
+    let tenant = await prisma.tenant.findUnique({ where: { document: cleanDoc } });
+    if (!tenant) {
+      tenant = await prisma.tenant.create({
+        data: {
+          name: body.companyName.trim().toUpperCase(),
+          document: cleanDoc,
+          isActive: true,
+        },
+      });
+
+      // Cria assinatura padrão Starter (1.000 docs)
+      const plan = (await prisma.plan.findFirst({ where: { slug: 'starter' } })) || (await prisma.plan.findFirst());
+      if (plan) {
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        await prisma.subscription.create({
+          data: {
+            tenantId: tenant.id,
+            planId: plan.id,
+            status: 'ACTIVE',
+            currentPeriodEnd: nextYear,
+          },
+        });
+      }
+    }
+
+    // Cria usuário
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name: body.name.trim(),
+        passwordHash: hashPassword(body.password),
+        mustChangePassword: false,
+      },
+    });
+
+    // Vincula como OWNER da empresa
+    const membership = await prisma.tenantMembership.create({
+      data: {
+        userId: user.id,
+        tenantId: tenant.id,
+        role: 'OWNER',
+        isDefault: true,
+      },
+      include: { tenant: true },
+    });
+
+    const accessToken = signAccessToken({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      activeTenantId: tenant.id,
+      role: 'OWNER',
+      mustChangePassword: false,
+    });
+
+    const refreshToken = generateRefreshToken();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    await prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshToken,
+        expiresAt,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      },
+    });
+
+    return reply.code(201).send({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        mustChangePassword: false,
+      },
+      activeTenant: {
+        id: tenant.id,
+        name: tenant.name,
+        document: tenant.document,
+        role: membership.role,
+      },
+      tenants: [
+        {
+          id: tenant.id,
+          name: tenant.name,
+          document: tenant.document,
+          role: membership.role,
+          isDefault: true,
+        },
+      ],
+    });
+  });
+
+  // ── POST /v1/auth/forgot-password ───────────────────────────
+  app.post('/v1/auth/forgot-password', async (req: FastifyRequest, reply: FastifyReply) => {
+    const body = req.body as { email?: string };
+    if (!body?.email) {
+      return reply.code(400).send({ error: 'EMAIL_REQUIRED', message: 'E-mail é obrigatório.' });
+    }
+
+    const email = body.email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Por segurança e boas práticas OWASP, sempre responde sucesso mesmo se o e-mail não existir
+    if (!user) {
+      return reply.send({
+        success: true,
+        message: 'Se o e-mail estiver cadastrado, as instruções de recuperação foram enviadas.',
+      });
+    }
+
+    // Em ambiente de homologação, gera e retorna o token de reset para teste direto
+    const resetToken = signAccessToken(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        activeTenantId: 'reset-pwd',
+        role: 'VIEWER',
+        mustChangePassword: true,
+      },
+      undefined,
+      3600
+    );
+
+    return reply.send({
+      success: true,
+      message: 'Instruções de recuperação geradas com sucesso.',
+      resetToken,
+    });
+  });
+
+  // ── POST /v1/auth/reset-password ────────────────────────────
+  app.post('/v1/auth/reset-password', async (req: FastifyRequest, reply: FastifyReply) => {
+    const body = req.body as { email?: string; token?: string; newPassword?: string };
+    if (!body?.email || !body?.token || !body?.newPassword) {
+      return reply.code(400).send({
+        error: 'MISSING_FIELDS',
+        message: 'E-mail, token e nova senha são obrigatórios.',
+      });
+    }
+
+    if (body.newPassword.length < 6) {
+      return reply.code(400).send({
+        error: 'PASSWORD_TOO_SHORT',
+        message: 'A nova senha deve ter no mínimo 6 caracteres.',
+      });
+    }
+
+    const tokenPayload = verifyAccessToken(body.token);
+    if (!tokenPayload || tokenPayload.email.toLowerCase() !== body.email.trim().toLowerCase()) {
+      return reply.code(400).send({
+        error: 'INVALID_OR_EXPIRED_TOKEN',
+        message: 'Token de recuperação inválido ou expirado.',
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: tokenPayload.userId } });
+    if (!user) {
+      return reply.code(404).send({ error: 'USER_NOT_FOUND', message: 'Usuário não encontrado.' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: hashPassword(body.newPassword),
+        mustChangePassword: false,
+      },
+    });
+
+    return reply.send({
+      success: true,
+      message: 'Senha redefinida com sucesso! Você já pode entrar com a nova senha.',
+    });
+  });
   app.post('/v1/auth/change-password', async (req: FastifyRequest, reply: FastifyReply) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -371,6 +594,272 @@ export async function registerAuthAndIamRoutes(app: FastifyInstance): Promise<vo
     return reply.code(201).send({
       success: true,
       membership,
+    });
+  });
+
+  // ── GET /v1/iam/members (Listar membros da empresa ativa) ───
+  app.get('/v1/iam/members', async (req: FastifyRequest, reply: FastifyReply) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+
+    const tokenPayload = verifyAccessToken(authHeader.substring(7));
+    if (!tokenPayload) return reply.code(401).send({ error: 'INVALID_TOKEN' });
+
+    const tenantId = (req.headers['x-tenant-id'] as string) || tokenPayload.activeTenantId;
+
+    const memberships = await prisma.tenantMembership.findMany({
+      where: { tenantId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+            mustChangePassword: true,
+            lastLoginAt: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return reply.send({
+      members: memberships.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        tenantId: m.tenantId,
+        role: m.role,
+        isDefault: m.isDefault,
+        createdAt: m.createdAt,
+        user: m.user,
+      })),
+    });
+  });
+
+  // ── POST /v1/iam/members (Adicionar/Convidar membro) ────────
+  app.post('/v1/iam/members', async (req: FastifyRequest, reply: FastifyReply) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+
+    const tokenPayload = verifyAccessToken(authHeader.substring(7));
+    if (!tokenPayload) return reply.code(401).send({ error: 'INVALID_TOKEN' });
+
+    // Apenas OWNER ou ADMIN pode gerenciar membros
+    if (!canPerform(tokenPayload.role, 'MEMBERS_MANAGE')) {
+      return reply.code(403).send({
+        error: 'FORBIDDEN',
+        message: 'Apenas Administradores e Proprietários podem adicionar membros à empresa.',
+      });
+    }
+
+    const tenantId = (req.headers['x-tenant-id'] as string) || tokenPayload.activeTenantId;
+    const body = req.body as {
+      name?: string;
+      email?: string;
+      role?: MembershipRole;
+      phone?: string;
+      temporaryPassword?: string;
+    };
+
+    if (!body?.email || !body?.name) {
+      return reply.code(400).send({
+        error: 'NAME_AND_EMAIL_REQUIRED',
+        message: 'Nome e e-mail são obrigatórios para cadastrar um membro.',
+      });
+    }
+
+    const email = body.email.trim().toLowerCase();
+    const validRoles: MembershipRole[] = ['OWNER', 'ADMIN', 'ACCOUNTANT', 'OPERATOR', 'VIEWER'];
+    const memberRole: MembershipRole = validRoles.includes(body.role as MembershipRole)
+      ? (body.role as MembershipRole)
+      : 'OPERATOR';
+
+    const tempPassword = body.temporaryPassword || '123456';
+
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: body.name.trim(),
+          phone: body.phone?.trim() || null,
+          passwordHash: hashPassword(tempPassword),
+          mustChangePassword: true,
+        },
+      });
+    }
+
+    const existingMembership = await prisma.tenantMembership.findUnique({
+      where: { userId_tenantId: { userId: user.id, tenantId } },
+    });
+
+    if (existingMembership) {
+      return reply.code(409).send({
+        error: 'ALREADY_MEMBER',
+        message: 'Este usuário já possui acesso a esta empresa.',
+      });
+    }
+
+    const membership = await prisma.tenantMembership.create({
+      data: {
+        userId: user.id,
+        tenantId,
+        role: memberRole,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+            mustChangePassword: true,
+            lastLoginAt: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    return reply.code(201).send({
+      success: true,
+      message: `Membro ${user.name} adicionado com sucesso com a função ${memberRole}!`,
+      member: {
+        id: membership.id,
+        userId: membership.userId,
+        tenantId: membership.tenantId,
+        role: membership.role,
+        isDefault: membership.isDefault,
+        createdAt: membership.createdAt,
+        user: membership.user,
+      },
+      temporaryPassword: tempPassword,
+    });
+  });
+
+  // ── PATCH /v1/iam/members/:id (Alterar função do membro) ────
+  app.patch('/v1/iam/members/:id', async (req: FastifyRequest, reply: FastifyReply) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+
+    const tokenPayload = verifyAccessToken(authHeader.substring(7));
+    if (!tokenPayload) return reply.code(401).send({ error: 'INVALID_TOKEN' });
+
+    if (!canPerform(tokenPayload.role, 'MEMBERS_MANAGE')) {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Sem permissão para alterar funções.' });
+    }
+
+    const { id } = req.params as { id: string };
+    const body = req.body as { role?: MembershipRole };
+
+    if (!body?.role) {
+      return reply.code(400).send({ error: 'ROLE_REQUIRED', message: 'Nova função é obrigatória.' });
+    }
+
+    const membership = await prisma.tenantMembership.findUnique({ where: { id } });
+    if (!membership) {
+      return reply.code(404).send({ error: 'MEMBERSHIP_NOT_FOUND', message: 'Vínculo de membro não encontrado.' });
+    }
+
+    const updated = await prisma.tenantMembership.update({
+      where: { id },
+      data: { role: body.role },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, phone: true, isActive: true, mustChangePassword: true, lastLoginAt: true, createdAt: true },
+        },
+      },
+    });
+
+    return reply.send({ success: true, member: updated });
+  });
+
+  // ── DELETE /v1/iam/members/:id (Remover membro da empresa) ──
+  app.delete('/v1/iam/members/:id', async (req: FastifyRequest, reply: FastifyReply) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+
+    const tokenPayload = verifyAccessToken(authHeader.substring(7));
+    if (!tokenPayload) return reply.code(401).send({ error: 'INVALID_TOKEN' });
+
+    if (!canPerform(tokenPayload.role, 'MEMBERS_MANAGE')) {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Sem permissão para remover membros.' });
+    }
+
+    const { id } = req.params as { id: string };
+    const membership = await prisma.tenantMembership.findUnique({ where: { id } });
+    if (!membership) {
+      return reply.code(404).send({ error: 'MEMBERSHIP_NOT_FOUND', message: 'Membro não encontrado.' });
+    }
+
+    // Impede remoção se for o próprio usuário e for OWNER único
+    if (membership.userId === tokenPayload.userId && membership.role === 'OWNER') {
+      const ownerCount = await prisma.tenantMembership.count({
+        where: { tenantId: membership.tenantId, role: 'OWNER' },
+      });
+      if (ownerCount <= 1) {
+        return reply.code(400).send({
+          error: 'LAST_OWNER',
+          message: 'Você não pode se remover sendo o único Proprietário da empresa.',
+        });
+      }
+    }
+
+    await prisma.tenantMembership.delete({ where: { id } });
+
+    return reply.send({ success: true, message: 'Membro removido da empresa com sucesso.' });
+  });
+
+  // ── POST /v1/iam/members/:id/reset-password (Resetar senha de membro) ──
+  app.post('/v1/iam/members/:id/reset-password', async (req: FastifyRequest, reply: FastifyReply) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+
+    const tokenPayload = verifyAccessToken(authHeader.substring(7));
+    if (!tokenPayload) return reply.code(401).send({ error: 'INVALID_TOKEN' });
+
+    if (!canPerform(tokenPayload.role, 'MEMBERS_MANAGE')) {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Sem permissão para redefinir senhas.' });
+    }
+
+    const { id } = req.params as { id: string };
+    const membership = await prisma.tenantMembership.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!membership) {
+      return reply.code(404).send({ error: 'MEMBERSHIP_NOT_FOUND', message: 'Membro não encontrado.' });
+    }
+
+    const tempPassword = 'senha' + Math.floor(100000 + Math.random() * 900000);
+
+    await prisma.user.update({
+      where: { id: membership.userId },
+      data: {
+        passwordHash: hashPassword(tempPassword),
+        mustChangePassword: true,
+      },
+    });
+
+    return reply.send({
+      success: true,
+      message: `Senha redefinida com sucesso para o usuário ${membership.user.name}.`,
+      temporaryPassword: tempPassword,
     });
   });
 

@@ -8,6 +8,9 @@ import {
   setStoredTenantId,
   clearStoredAuth,
   loginUserApi,
+  signupUserApi,
+  forgotPasswordApi,
+  resetPasswordApi,
   changePasswordApi,
   fetchMeApi,
   fetchMyTenantsApi,
@@ -48,9 +51,19 @@ interface AuthContextType {
   showPasswordChangeModal: boolean;
   setShowPasswordChangeModal: (show: boolean) => void;
   login: (email: string, password: string) => Promise<void>;
+  signUp: (data: {
+    name: string;
+    email: string;
+    password: string;
+    document: string;
+    companyName: string;
+    businessProfile?: string;
+  }) => Promise<void>;
   logout: () => void;
   switchTenant: (tenantId: string) => Promise<void>;
   changePassword: (newPassword: string, currentPassword?: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message: string; resetToken?: string }>;
+  resetPassword: (email: string, token: string, newPassword: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -83,12 +96,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
-      const isChanged = localStorage.getItem('it2a_password_changed') === 'true';
-      if (isChanged) {
-        return { ...DEFAULT_USER, mustChangePassword: false };
+      const token = getStoredAuthToken();
+      const saved = localStorage.getItem('it2a_user_profile');
+      if (token && saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return null;
+        }
       }
     }
-    return DEFAULT_USER;
+    return null;
   });
   const [activeTenant, setActiveTenant] = useState<TenantInfo | null>(DEFAULT_IT2A_TENANT);
   const [tenants, setTenants] = useState<TenantInfo[]>([
@@ -125,6 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (meData?.user) {
         setUser(meData.user);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('it2a_user_profile', JSON.stringify(meData.user));
+        }
         if (meData.user.mustChangePassword && localStorage.getItem('it2a_password_changed') !== 'true') {
           setShowPasswordChangeModal(true);
         }
@@ -166,6 +187,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await loginUserApi(email, pass);
       setStoredAuth(res.accessToken, res.activeTenant?.id || 'it2a-default-tenant');
       setUser(res.user);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('it2a_user_profile', JSON.stringify(res.user));
+      }
       if (res.activeTenant) setActiveTenant(res.activeTenant);
       if (res.tenants) setTenants(res.tenants);
 
@@ -179,10 +203,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signUp = async (data: {
+    name: string;
+    email: string;
+    password: string;
+    document: string;
+    companyName: string;
+    businessProfile?: string;
+  }) => {
+    setIsLoading(true);
+    try {
+      const res = await signupUserApi(data);
+      setStoredAuth(res.accessToken, res.activeTenant?.id || 'it2a-default-tenant');
+      setUser(res.user);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('it2a_user_profile', JSON.stringify(res.user));
+      }
+      if (res.activeTenant) setActiveTenant(res.activeTenant);
+      if (res.tenants) setTenants(res.tenants);
+
+      await refreshProfile();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     clearStoredAuth();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('it2a_user_profile');
+      localStorage.removeItem('it2a_password_changed');
+    }
     setUser(null);
-    setActiveTenant(DEFAULT_IT2A_TENANT);
+    setActiveTenant(null);
   };
 
   const switchTenant = async (tenantId: string) => {
@@ -225,6 +278,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setShowPasswordChangeModal(false);
   };
 
+  const forgotPassword = async (email: string) => {
+    return await forgotPasswordApi(email);
+  };
+
+  const resetPassword = async (email: string, token: string, newPassword: string) => {
+    await resetPasswordApi(email, token, newPassword);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -236,9 +297,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showPasswordChangeModal,
         setShowPasswordChangeModal,
         login,
+        signUp,
         logout,
         switchTenant,
         changePassword,
+        forgotPassword,
+        resetPassword,
         refreshProfile,
       }}
     >
