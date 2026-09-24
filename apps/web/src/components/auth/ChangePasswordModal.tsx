@@ -6,7 +6,7 @@ import { useAuth } from './AuthContext';
 
 export const ChangePasswordModal: React.FC = () => {
   const { user, showPasswordChangeModal, setShowPasswordChangeModal, changePassword } = useAuth();
-  const [currentPassword, setCurrentPassword] = useState('123456');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

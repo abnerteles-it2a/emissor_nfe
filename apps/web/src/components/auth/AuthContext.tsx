@@ -50,7 +50,7 @@ interface AuthContextType {
   isLoading: boolean;
   showPasswordChangeModal: boolean;
   setShowPasswordChangeModal: (show: boolean) => void;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserProfile>;
   signUp: (data: {
     name: string;
     email: string;
@@ -79,7 +79,7 @@ const DEFAULT_USER: UserProfile = {
   id: 'admin-it2a',
   email: 'abner.teles@it2a.com',
   name: 'Abner Teles',
-  mustChangePassword: true, // Conforme solicitação: pede para trocar a senha temporária
+  mustChangePassword: false,
 };
 
 const DEFAULT_SUBSCRIPTION: SubscriptionInfo = {
@@ -146,9 +146,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (typeof window !== 'undefined') {
           localStorage.setItem('it2a_user_profile', JSON.stringify(meData.user));
         }
-        if (meData.user.mustChangePassword && localStorage.getItem('it2a_password_changed') !== 'true') {
-          setShowPasswordChangeModal(true);
-        }
       }
 
       if (myTenantsData?.data && Array.isArray(myTenantsData.data)) {
@@ -172,16 +169,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isChanged = localStorage.getItem('it2a_password_changed') === 'true';
-      if (!isChanged && user?.mustChangePassword) {
-        setShowPasswordChangeModal(true);
-      }
-    }
     refreshProfile();
-  }, [refreshProfile, user?.mustChangePassword]);
+  }, [refreshProfile]);
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string): Promise<UserProfile> => {
     setIsLoading(true);
     try {
       const res = await loginUserApi(email, pass);
@@ -193,11 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.activeTenant) setActiveTenant(res.activeTenant);
       if (res.tenants) setTenants(res.tenants);
 
-      if (res.user.mustChangePassword) {
-        setShowPasswordChangeModal(true);
-      }
-
       await refreshProfile();
+      return res.user;
     } finally {
       setIsLoading(false);
     }

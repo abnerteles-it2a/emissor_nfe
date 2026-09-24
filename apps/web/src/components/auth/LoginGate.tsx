@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Lock,
@@ -25,7 +25,7 @@ import {
 import { useAuth } from './AuthContext';
 
 export const LoginGate: React.FC = () => {
-  const { user, login, signUp, changePassword, forgotPassword, resetPassword, isLoading } = useAuth();
+  const { user, login, signUp, logout, changePassword, forgotPassword, resetPassword, isLoading } = useAuth();
 
   // Modo ativo: LOGIN, SIGNUP, FORGOT_PASSWORD, CHANGE_PASSWORD
   const [step, setStep] = useState<'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD' | 'CHANGE_PASSWORD'>('LOGIN');
@@ -100,8 +100,15 @@ export const LoginGate: React.FC = () => {
     }
   };
 
-  // Se já está logado e NÃO precisa trocar senha, não exibe o Gate
-  if (user && !user.mustChangePassword && !changeSuccess) {
+  // Sincroniza o modo de tela com a necessidade obrigatória de troca de senha
+  useEffect(() => {
+    if (user?.mustChangePassword) {
+      setStep('CHANGE_PASSWORD');
+    }
+  }, [user?.mustChangePassword]);
+
+  // Se já está logado e NÃO precisa trocar senha, não exibe o Gate (acesso liberado)
+  if (user && !user.mustChangePassword) {
     return null;
   }
 
@@ -113,16 +120,12 @@ export const LoginGate: React.FC = () => {
     setBusy(true);
 
     try {
-      await login(email, password);
-      if (password === '123456') {
+      const loggedUser = await login(email.trim().toLowerCase(), password);
+      if (loggedUser?.mustChangePassword) {
         setStep('CHANGE_PASSWORD');
       }
     } catch (err: any) {
-      if (email.toLowerCase() === 'abner.teles@it2a.com' && password === '123456') {
-        setStep('CHANGE_PASSWORD');
-      } else {
-        setErrorMsg(err.message || 'Credenciais inválidas. Verifique seu e-mail e senha.');
-      }
+      setErrorMsg(err.message || 'Credenciais inválidas. Verifique seu e-mail e senha.');
     } finally {
       setBusy(false);
     }
@@ -264,12 +267,12 @@ export const LoginGate: React.FC = () => {
 
     setBusy(true);
     try {
-      await changePassword(newPassword, password);
+      await changePassword(newPassword, password || undefined);
       setChangeSuccess(true);
-      setSuccessMsg('Senha definitiva cadastrada com sucesso! Entrando na plataforma...');
-      setTimeout(() => {
-        setStep('LOGIN');
-      }, 1200);
+      setSuccessMsg('Senha definitiva cadastrada com sucesso! Acessando ambiente fiscal...');
+      setPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao atualizar senha.');
     } finally {
@@ -859,6 +862,21 @@ export const LoginGate: React.FC = () => {
                       <span>Cadastrar Nova Senha &amp; Entrar</span>
                     </>
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    setStep('LOGIN');
+                    setPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                  className="w-full py-2 text-center text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-rose-500 flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Sair e voltar ao login</span>
                 </button>
               </form>
             )}
