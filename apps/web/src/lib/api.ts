@@ -78,6 +78,19 @@ export function clearStoredAuth() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('it2a_access_token');
     localStorage.removeItem('it2a_active_tenant_id');
+    localStorage.removeItem('it2a_user_profile');
+    localStorage.removeItem('it2a_password_changed');
+  }
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
   }
 }
 
@@ -274,8 +287,11 @@ export async function fetchMeApi() {
   const res = await fetch(`${API_BASE_URL}/v1/auth/me`, {
     headers: getAuthHeaders(),
   });
-  if (!res.ok) throw new Error('Não autenticado');
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(data.message || data.error || 'Não autenticado', res.status, data.error);
+  }
+  return data;
 }
 
 export async function fetchMyTenantsApi() {

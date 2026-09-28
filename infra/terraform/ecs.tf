@@ -217,6 +217,7 @@ resource "aws_ecs_task_definition" "api" {
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3000" },
         { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}" },
+        { name = "JWT_SECRET", value = var.jwt_secret },
         { name = "STORAGE_BUCKET", value = aws_s3_bucket.fiscal_documents.id },
         { name = "STORAGE_REGION", value = var.aws_region }
       ]
@@ -277,6 +278,7 @@ resource "aws_ecs_task_definition" "worker" {
       environment = [
         { name = "NODE_ENV", value = "production" },
         { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}" },
+        { name = "JWT_SECRET", value = var.jwt_secret },
         { name = "STORAGE_BUCKET", value = aws_s3_bucket.fiscal_documents.id },
         { name = "STORAGE_REGION", value = var.aws_region },
         { name = "SEFAZ_UF", value = "SP" },

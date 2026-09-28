@@ -11,7 +11,14 @@ export interface AuthTokenPayload {
   exp?: number;
 }
 
-const DEFAULT_SECRET = process.env.JWT_SECRET || 'fiscal-platform-default-dev-jwt-secret-key-32chars!';
+const DEVELOPMENT_SECRET = 'fiscal-platform-default-dev-jwt-secret-key-32chars!';
+
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (secret) return secret;
+  if (process.env.NODE_ENV !== 'production') return DEVELOPMENT_SECRET;
+  throw new Error('JWT_SECRET must be configured in production');
+}
 
 function base64UrlEncode(str: string): string {
   return Buffer.from(str)
@@ -34,9 +41,10 @@ function base64UrlDecode(str: string): string {
  */
 export function signAccessToken(
   payload: Omit<AuthTokenPayload, 'iat' | 'exp'>,
-  secret = DEFAULT_SECRET,
+  secret?: string,
   expiresInSeconds = 24 * 60 * 60 // 24 horas por padrão para o portal
 ): string {
+  const signingSecret = secret ?? getJwtSecret();
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const fullPayload: AuthTokenPayload = {
@@ -49,7 +57,7 @@ export function signAccessToken(
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
 
   const signature = crypto
-    .createHmac('sha256', secret)
+    .createHmac('sha256', signingSecret)
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64')
     .replace(/=/g, '')
@@ -62,15 +70,18 @@ export function signAccessToken(
 /**
  * Valida a assinatura e tempo de expiração do JWT HMAC-SHA256
  */
-export function verifyAccessToken(token: string, secret = DEFAULT_SECRET): AuthTokenPayload | null {
+export function verifyAccessToken(token: string, secret?: string): AuthTokenPayload | null {
   try {
+    const verificationSecret = secret ?? getJwtSecret();
     const parts = token.split('.');
     if (parts.length !== 3) return null;
 
     const [encodedHeader, encodedPayload, signature] = parts;
+    const header = JSON.parse(base64UrlDecode(encodedHeader)) as { alg?: string; typ?: string };
+    if (header.alg !== 'HS256' || header.typ !== 'JWT') return null;
 
     const expectedSignature = crypto
-      .createHmac('sha256', secret)
+      .createHmac('sha256', verificationSecret)
       .update(`${encodedHeader}.${encodedPayload}`)
       .digest('base64')
       .replace(/=/g, '')
@@ -92,8 +103,8 @@ export function verifyAccessToken(token: string, secret = DEFAULT_SECRET): AuthT
     const payload = JSON.parse(payloadJson) as AuthTokenPayload;
 
     const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      return null; // Token expirado
+    if (typeof payload.exp !== 'number' || payload.exp <= now) {
+      return null;
     }
 
     return payload;

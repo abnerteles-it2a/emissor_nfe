@@ -16,6 +16,7 @@ import {
   fetchMyTenantsApi,
   switchTenantApi,
   fetchSubscriptionUsageApi,
+  ApiError,
 } from '../../lib/api';
 
 export interface UserProfile {
@@ -135,8 +136,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = getStoredAuthToken();
       if (!token) return;
 
-      const [meData, myTenantsData, usageData] = await Promise.all([
-        fetchMeApi().catch(() => null),
+      let meData: Awaited<ReturnType<typeof fetchMeApi>> | null = null;
+      try {
+        meData = await fetchMeApi();
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          logout();
+          return;
+        }
+        console.warn('Não foi possível validar a sessão:', err);
+      }
+
+      const [myTenantsData, usageData] = await Promise.all([
         fetchMyTenantsApi().catch(() => null),
         fetchSubscriptionUsageApi().catch(() => null),
       ]);

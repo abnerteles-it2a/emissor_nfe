@@ -29,6 +29,17 @@ variable "db_password" {
   default     = "FiscalStagingSecure2026!"
 }
 
+variable "jwt_secret" {
+  type        = string
+  description = "Segredo compartilhado para assinar e validar tokens JWT"
+  sensitive   = true
+
+  validation {
+    condition     = length(trimspace(var.jwt_secret)) >= 32
+    error_message = "jwt_secret deve ter pelo menos 32 caracteres."
+  }
+}
+
 variable "github_repository" {
   type        = string
   description = "URL do repositório no GitHub para o Amplify"
